@@ -1,2 +1,6 @@
+# General
+*.exe
+*.pdb
+
 # Jai
 .build/
