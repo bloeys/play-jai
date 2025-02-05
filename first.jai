@@ -1,11 +1,11 @@
 #import "Basic";
 
 main :: () {
-
     test1();
 }
 
 test1 :: () {
+
     x : s32 = 55;
     y : s8 = cast(s8) x;
     z := 1.2;
@@ -206,6 +206,33 @@ how are you doing today??
         print("(pushed context 2) context.gg=%\n", context.gg);
     }
     print("context.gg=%\n", context.gg);
+
+    // Default enum type is s64, but we can do like 'My_Enum :: enum u32'
+    My_Enum :: enum {
+        A :: 5;
+        B;  // B=6
+        C :: 10;
+        D;  // D=11
+    }
+
+    print_enum_key_values :: ($T : Type) {
+
+        ti := type_info(T);
+        assert(ti.type == .ENUM);
+
+        sb : String_Builder;
+        sb.allocator = temp;
+        for ti.names {
+            print_to_builder(*sb, " %=%", it, ti.values[it_index]);
+        }
+
+        print("% key/values:[% ]\n", T, builder_to_string(*sb));
+    }
+
+    enum1 := My_Enum.A;
+    print("enum1=%\n", enum1);
+    print("enum1 value type=%\n", type_of(type_info(My_Enum).values[0]));
+    print_enum_key_values(My_Enum);
 }
 
 #add_context gg : u8 = 128;
