@@ -1,10 +1,34 @@
 #import "Basic";
 
 main :: () {
-    test1();
+    generic_test();
+    printing_test();
 }
 
-test1 :: () {
+Coord :: struct {
+    lat: float64;
+    long: float64;
+}
+
+Person :: struct {
+    name: string;
+    age: int;
+    version := 1; // We can set defaults
+    
+    // We can even do part of structs!
+    pos: Coord;
+    pos.lat = -1;
+
+    // Setting default later is even valid, if you want!
+    // version = 1;
+}
+
+Employee :: struct {
+    #as using base: Person;
+    salary: float32;
+}
+
+generic_test :: () {
 
     x : s32 = 55;
     y : s8 = cast(s8) x;
@@ -81,24 +105,6 @@ how are you doing today??
         Structs
     */
 
-    Coord :: struct {
-        lat: float64;
-        long: float64;
-    }
-
-    Person :: struct {
-        name: string;
-        age: int;
-        version := 1; // We can set defaults
-        
-        // We can even do part of structs!
-        pos: Coord;
-        pos.lat = -1;
-
-        // Setting default later is even valid, if you want!
-        // version = 1;
-    }
-
     p : Person;
     p.name = "Omar";
     p.age = 27;
@@ -125,11 +131,6 @@ how are you doing today??
     person_type := Person;
     print("int_type=%\n", int_type);
     print("person_type=%\n", person_type);
-
-    Employee :: struct {
-        #as using base: Person;
-        salary: float32;
-    }
 
     print_personal_info :: (p: Person) {
         print("Person=%\n", p);
@@ -234,11 +235,13 @@ how are you doing today??
     print("enum1 value type=%\n", type_of(type_info(My_Enum).values[0]));
     print_enum_key_values(My_Enum);
 
-    /*
-        Printing
-    */
-    print("test1=%\n", test1);  // Outputs 'procedure 0x123', where 0x123 is the address
-    print("test1=%\n", cast(*void)test1); // The cast outputs only the address without 'procdure'
+    printing_test();
+}
+
+printing_test :: () {
+
+    print("generic_test=%\n", generic_test);  // Outputs 'procedure 0x123', where 0x123 is the address
+    print("generic_test=%\n", cast(*void)generic_test); // The cast outputs only the address without 'procdure'
 
     // We can mix and match numbered and non-numbered print arguments.
     // Non-numbered after numbered will pick the next arugment after that number. So here % is used after %1, so %==%2.
@@ -252,7 +255,7 @@ how are you doing today??
     print("some formatted float=%\n", FormatFloat.{value = 0.50009, zero_removal = .NO, trailing_width = 4});
     
     print("some formatted struct=%\n",
-        FormatStruct.{value = p, draw_type_name = true, use_long_form_if_more_than_this_many_members = -1, use_newlines_if_long_form = true},
+        FormatStruct.{value = Person.{name = "Jon"}, draw_type_name = true, use_long_form_if_more_than_this_many_members = -1, use_newlines_if_long_form = true},
     );
 
     print("some formatted array=%\n", FormatArray.{value = u8.[55, 128, 0, 11], separator = "; "});
