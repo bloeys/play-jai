@@ -1,8 +1,12 @@
 #import "Basic";
 
+// Add this gg field to the context
+#add_context gg : u8 = 128;
+
 main :: () {
     generic_test();
     printing_test();
+    loop_test();
 }
 
 Coord :: struct {
@@ -293,4 +297,6 @@ printing_test :: () {
     write_string("\n");
 }
 
-#add_context gg : u8 = 128;
+loop_test :: () {
+    
+}
