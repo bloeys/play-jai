@@ -233,6 +233,61 @@ how are you doing today??
     print("enum1=%\n", enum1);
     print("enum1 value type=%\n", type_of(type_info(My_Enum).values[0]));
     print_enum_key_values(My_Enum);
+
+    /*
+        Printing
+    */
+    print("test1=%\n", test1);  // Outputs 'procedure 0x123', where 0x123 is the address
+    print("test1=%\n", cast(*void)test1); // The cast outputs only the address without 'procdure'
+
+    // We can mix and match numbered and non-numbered print arguments.
+    // Non-numbered after numbered will pick the next arugment after that number. So here % is used after %1, so %==%2.
+    print("%3. Please welcome %1. %1 has been working on this language for % years. Good job %1. Thank you for % years of work.\n", "Jon", 10, "Hi all");
+
+    // Formatting options can be applied using formatting structs like FormatInt/FormatStruct/FormatFloat/FormatArray
+    print("some formatted int=%\n", FormatInt.{value = 99, minimum_digits = 3});
+    print("some formatted int=%\n", FormatInt.{value = 999999, digits_per_comma = 3, comma_string=","});
+
+    // This will round to 0.5001 as trailing width is numbers after the dot
+    print("some formatted float=%\n", FormatFloat.{value = 0.50009, zero_removal = .NO, trailing_width = 4});
+    
+    print("some formatted struct=%\n",
+        FormatStruct.{value = p, draw_type_name = true, use_long_form_if_more_than_this_many_members = -1, use_newlines_if_long_form = true},
+    );
+
+    print("some formatted array=%\n", FormatArray.{value = u8.[55, 128, 0, 11], separator = "; "});
+
+    // By default, print uses formatting specified in context.print_style, so changing that or pushing context
+    // allows us to configure formatting on a global level or on a specific program subtree.
+    push_context {
+        context.print_style.default_format_int.base = 2;
+        print("some formatted int (binary)=0b%\n", 3); // This will print in binary '11'
+    }
+
+    // '%%' prints simply '%'. But its a problem if we want to print like x%, because you will get %%%
+    // which leads to the reverse of what you want (it prints %x). One approach is to do %1%%, but that makes you use
+    // numbered arguments which can lead to more errors. So instead, you can use %0 which is the SAME as %, but avoids the
+    // issue above. Remember: %0 is NOT a numbered argument like %1/%2/etc. %==%0
+    print("You got %0%% on your exam!\n", 91.5);
+
+    // We want to print 'Tomato55', but doing %255 is wrong index, and %0 we can't use because we want argument 2,
+    // so instead we can use %00, which is equal to "" (empty string).
+    name1 := "Potato";
+    name2 := "Tomato";
+    print("My favorite fruit is %2%0055.\n", name1, name2);  // We're intentionally picking name2, ignoring name1.
+
+    // Special treatment of '%' happens by print on the format string only. Arguments aren't touched.
+    print("%\n", "My score is 99.99%! 99%%!!!");
+
+    // If you want pure and simple print-to-console without any features or parsing, use write_string.
+    write_string("This is a %. Do you like it? What about %% and %0 and '%00' and %1?!\n");
+
+    // write_strings is the same pure printing but takes many strings
+    write_strings("how", " are", " you?\n");
+
+    // There is also write_number which takes s64
+    write_number(-99);
+    write_string("\n");
 }
 
 #add_context gg : u8 = 128;
