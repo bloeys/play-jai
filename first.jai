@@ -5,7 +5,7 @@
 
 main :: () {
     generic_test();
-    printing_test();
+    print_test();
     loop_test();
 }
 
@@ -50,6 +50,7 @@ generic_test :: () {
     arr1 := int.[1,1,1,1,1,1,1,1,1,1];
     print("arr1 (type=%; size=%)=%\n", type_of(arr1), size_of(type_of(arr1)), arr1);
     
+    // Inclusive: [0,9]
     for index: 0..9 {
         print("arr1[%]=%\n", index, arr1[index]);
     }
@@ -239,10 +240,12 @@ how are you doing today??
     print("enum1 value type=%\n", type_of(type_info(My_Enum).values[0]));
     print_enum_key_values(My_Enum);
 
-    printing_test();
+    print_test();
 }
 
-printing_test :: () {
+print_test :: () {
+
+    print("\n\n================= Print Test =================\n\n");
 
     print("generic_test=%\n", generic_test);  // Outputs 'procedure 0x123', where 0x123 is the address
     print("generic_test=%\n", cast(*void)generic_test); // The cast outputs only the address without 'procdure'
@@ -271,11 +274,11 @@ printing_test :: () {
         print("some formatted int (binary)=0b%\n", 3); // This will print in binary '11'
     }
 
-    // '%%' prints simply '%'. But its a problem if we want to print like x%, because you will get %%%
-    // which leads to the reverse of what you want (it prints %x). One approach is to do %1%%, but that makes you use
-    // numbered arguments which can lead to more errors. So instead, you can use %0 which is the SAME as %, but avoids the
-    // issue above. Remember: %0 is NOT a numbered argument like %1/%2/etc. %==%0
-    print("You got %0%% on your exam!\n", 91.5);
+    // '\%' prints '%'.
+    //
+    // To avoid some overlap cases (e.g. %%) you can use %0 which is the SAME as %, but avoids the
+    // issue. Remember: %0 is NOT a numbered argument like %1/%2/etc. %==%0
+    print("You got %0\% on your exam!\n", 91.5);
 
     // We want to print 'Tomato55', but doing %255 is wrong index, and %0 we can't use because we want argument 2,
     // so instead we can use %00, which is equal to "" (empty string).
@@ -298,5 +301,190 @@ printing_test :: () {
 }
 
 loop_test :: () {
+
+    print("\n\n================= Loop Test =================\n\n");
+
+    x := 0;
+    while x < 10 {
+        defer x += 1;
+        print("x=%\n", x);
+
+        if x==5 break;
+    }
+
+    // In a normal increment like while x<10 {x+=1;if x==5 break;}, the print
+    // AFTER the loop would print x=5.
+    //
+    // However, 'defer' runs each time we exit the loop body which happens on each iteration AND
+    // when we break. As such, if you break at x==5, the defer will run, and you will get x==6 after the loop.
+    // This is fine, but must be kept in mind if you rely on the exact index/iteration when using defer.
+    //
+    // If you want exact index in such a while loop, do NOT use defer.
+    print("x after loop=%\n", x);
+
+    // Similar to Go, defer only 'activates' if it is reached.
+    // As such, defer here won't be reached as x==6, and so we will exit the loop without changing x.
+    while x < 100 {
+        if x < 10 break;
+        defer x += 1;
+    }
+
+    // Unlike Go, defer is attached to scope NOT procedure, and so triggers as soon as scope ends.
+    // Here, the defer print will show BEFORE the after-scope print. In Go, it would be the opposite.
+    {
+        defer print("Hi from scope defer\n");
+    }
     
+    print("Hi from after scope\n");
+
+    // Continue also fires defer, but again remember that defer must be reached BEFORE continue.
+    while x < 10 {
+        defer x += 1;
+        continue;
+    }
+    print("x after defer+continue=%\n", x);
+
+    // As you expect, continue/break refer to the innermost loop, but we can also name
+    // loops and refer to those when using continue/break.
+    //
+    // loop1/loop2 are normal bool variables as you might expect, but they allow us to refer to a specific loop.
+    //
+    // Note: The variable loop1 does NOT need to be a bool. For example, it might be an int, which would still work as it
+    // is evaluated as true/false based on its value to keep the loop going (zero==false).
+    while loop1 := x < 100{
+
+        defer x += 1;
+
+        while loop2 := x < 1000 {
+
+            print("type_of(loop1)=%\n", type_of(loop1));
+            break loop1;
+        }
+    }
+    print("x after nested loops with 1 iteration=%\n", x);
+
+    // In for loops, we can use the loop variable to break/continue
+    for 0..5 {
+        print("1-iter-for-loop it=%\n", it);
+        break it;
+    }
+
+    for x: 0..5 {
+        print("1-iter-for-loop-v2 x=%\n", x);
+        break x;
+    }
+
+    // Ranges are only evaluated ONCE before the start of the loop.
+    // The following loop prints 0 till 5 even though x is decreasing each iteration. 
+    x = 5;
+    for 0..x {
+        x -= 1;
+        print("changing-range for-loop: it=%; x=%\n", it, x);
+    }
+
+    // If you want a given range to go in reverse, put '#v2 <' before it. The '#v2' is noted to be temporary.
+    //
+    // Note: start must still be less than end, its just that you go through a valid range in the other direction.
+    for #v2 < 0..5 {
+        print("reverse it=%\n", it);
+    }
+
+    // The above is all well and good, but pros do this
+    arr := int.[1,2,3,4,5];
+    
+    print("\n");
+    for num, i: arr {
+        print("forward arr[%]=%\n", i, num);
+    }
+
+    print("\n");
+    for < arr {
+        print("reverse arr[%]=%\n", it_index, it);
+    }
+
+    // We can also break on custom iterator
+    for x: arr {
+        break x;
+    }
+
+    // To remove an item from an array where order doesn't matter, we usually
+    // copy the last item into the slot of the item we want to delete and then reduce the
+    // size of the array by 1 (e.g. In Go you can take a smaller view of the array).
+    //
+    // If you were removing inside a loop, you do the same thing, along with i-=1, so that the last
+    // item gets processed and not skipped over.
+    //
+    // In Jai, there is a built-in way to remove-by-swap and decrement index: 'remove it'
+    dyn_arr : [..]int;
+    for 0..5 array_add(*dyn_arr, it);
+
+    print("\ndyn_arr=%\n", dyn_arr);
+    for dyn_arr {
+        if it == 2 remove it;
+    }
+    print("dyn_arr after remove=%\n", dyn_arr);
+
+    // Remove copied the last item into dyn_arr[2] and decremented count, which means
+    // we can see the original last item again by incrementing the count.
+    dyn_arr.count+=1;
+    print("dyn_arr after remove and count++ = %\n", dyn_arr);
+
+    tick_counter :: (counter: *int) -> int {
+        <<counter += 1;
+        print("counter ticked!\n");
+        return <<counter;
+    }
+
+    // while loop conditions are evaluated each loop
+    counter := 0;
+    while tick_counter(*counter) < 5 {
+        print("counter=%\n", counter);
+    }
+
+    // for loop expressions are only called once before the loop starts.
+    // This print statement will only be called once!
+    get_names :: () -> []string {
+        print("\n!! get_names called !!\n");
+        // Array literals, and each string within it, are placed in read-only memory allocated by the compiler.
+        return .["Ahmed", "Jack", "Jonah", "Alice"];
+    }
+
+    // By default, iterator variables like 'it' are done via const reference, which means they can NOT be modified.
+    // If you uncomment 'it.count = 5;' and run you will get an error.
+    for get_names() {
+        // it.count = 5;
+        print("name=%\n", it);
+    }
+
+    get_names_heap :: () -> []string { // We can also return [..]string
+        
+        print("\n!! get_names_heap called !!\n");
+        NAMES :: string.["Ahmed", "Jack", "Jonah", "Alice"];
+
+        arr: [..]string;
+        array_add(*arr, ..NAMES);
+        
+        return arr;
+    }
+
+    // This loop actually changes 'heap_names' in a way that persists
+    // after the loop. A few things allow this:
+    //
+    // - The array used is non-const, making it mutable
+    // - 'for *' is used, which makes 'it' a mutable pointer to each element (*string in this case)
+    //
+    // Note: While the array itself is on the heap, the individual strings within it (in this case) are literals and so read-only.
+    heap_names := get_names_heap();
+    for * heap_names {
+        if it.count > 3 it.count=3;
+        print("heap name=%\n", <<it);
+
+        // While this array is on the heap, the individual strings within it are literal and so immutable.
+        // Below are different equivalent ways of changing the first character of the string, but they all crash
+        // because 'it' points to a literal string.
+
+        // <<it.data = <<"bro".data;
+        // (<<it)[0] = "bro"[0];
+    }
+    print("heap names after loop=%\n", heap_names);
 }
