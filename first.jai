@@ -13,6 +13,7 @@ main :: () {
     imports_test();
     this_and_loc_and_run_test();
     operator_overloading_test();
+    static_if();
 }
 
 Coord :: struct {
@@ -858,4 +859,80 @@ operator_overloading_test :: () {
     b[10] = 99;
     b[0]  = 10;
     print("b[10]=% at address=%\n", b[10], *b[10]);
+}
+
+static_if :: () {
+
+    print("\n\n================= #if/#ifx Test =================\n\n");
+
+    CONDITION :: true;
+
+    // #if is a compile time 'if' that allows you to conditionally compile code blocks.
+    // However, it does NOT create its own scope. This is done to give you the ability to 'inject'
+    // things into your main scope.
+    //
+    // In this example, even though it appears that 'x' is defined in an inner scope, since #if
+    // doesn't change scope, the following print is able to see and use x.
+    #if CONDITION {
+        x := 10;
+        print("'#if' is compiling!\n");
+    } else {
+        x := -1;
+    }
+
+    print("x=%\n", x);
+
+    // #if and #run can be combined for nice effect, as #if requires constants.
+    //
+    // Also, note that while this code works, it will give a compilation error if the static if does NOT run, as in that case there will be NO 'y' in scope.
+    truthy :: () -> bool {
+        return true;
+    }
+
+    #if #run truthy() {
+        y := 55;
+    }
+
+    print("y=%\n", y);
+
+    // We can also use them to do conditional compilation based on platform, where 'OS' is provided by the compiler
+    #if OS == .WINDOWS {
+        print("We are on WINDOWS!\n");
+    } else #if OS == MACOS || OS == .LINUX {
+        print("We are on MAC or Linux!\n");
+    } else {
+        print("We are...actually I don't know. All I know is OS=%\n", OS);
+    }
+
+    // Unlike C/Cpp, there is NO pre-processor, which means the below is NOT ignored by the compiler.
+    // ALL #if paths must parse correctly.
+    //
+    // Uncomment the incomplete print and you will get an error.
+    #if false {
+        // print(
+    }
+
+    // #if can be put basically anywhere, including structs, enums, and file scope
+    Keys :: enum u8 {
+
+        X :: 1; // Available on all platforms
+
+        #if OS == .PS4 || OS == .PS5 {
+            O;
+            T;
+            S;
+        }
+
+        #if OS == .XBOX {
+            Y;
+            A;
+            B;
+        }
+
+        #if OS == .NN_SWITCH HOME;  // You can do 1-liners
+    }
+
+    // There is an #ifx version as well, with similar rules to the normal 'ifx'
+    gamer_msg := #ifx OS == .WINDOWS then "GAMER" else "Candy Crush";
+    print("msg=%\n", gamer_msg);
 }
