@@ -11,7 +11,8 @@ main :: () {
     if_case_test();
     any_test();
     imports_test();
-    this_and_loc_test();
+    this_and_loc_and_run_test();
+    operator_overloading_test();
 }
 
 Coord :: struct {
@@ -710,11 +711,11 @@ imports_test :: () {
     print("in-namespace print from My_Basic2\n");
 }
 
-this_and_loc_test :: () {
+this_and_loc_and_run_test :: () {
 
-    print("\n\n================= #this and #location Test =================\n\n");
+    print("\n\n================= #this and #location and #run Test =================\n\n");
 
-    // #this refers to the current procedure, struct, or 'data scope' (not sure what this last one means) at compile time.
+    // #this refers to the current procedure, struct, or 'data scope' (e.g. somewhere without 'ordered statements', like file-scope) at compile time.
     proc :: #this;
     print("proc=%\n", proc);
     
@@ -723,14 +724,12 @@ this_and_loc_test :: () {
     // For example, here this factorial function does NOT have a name, but it can call itself because
     // #this resolves at compile time to the anonymous proc its in. 
     facotrial_num := 3;
-    result := (x: int) -> int {
-
+    factorial_result := (x: int) -> int {
         if x <= 1 return 1;
-        
         return x * #this(x-1);
     }(facotrial_num);
 
-    print("factorial(%)=%\n", facotrial_num, result);
+    print("factorial(%)=%\n", facotrial_num, factorial_result);
 
     // This can also be used to simplify definitions of self-referencing structs
     Node :: struct (data_type: Type)  {
@@ -741,5 +740,99 @@ this_and_loc_test :: () {
     print("node=%\n", Node(int).{});
 
     // There is also #location(x), which gives you the source location of 'x'. The returned value is the struct 'Source_Code_Location'
-    print("% loc=%\n", #this, #location(#this)); 
+    print("% loc=%\n", #procedure_name(#this), #location(#this));
+
+    // #run simply runs the given expression at COMPILE time.
+    // This allows you to run arbitrary computations at compile time and save the result in a constant 
+    factorial :: (x: int) -> int {
+        if x <= 1 return 1;
+        return x * #this(x-1);
+    };
+
+    FACT_10 :: #run factorial(10);
+    // FACT_10 :: factorial(10); // This fails because the expression isn't constant
+    print("compile-time factorial(10)=%\n", FACT_10);
+}
+
+operator_overloading_test :: () {
+
+    print("\n\n================= Operator Overloading Test =================\n\n");
+
+    // We can overload the following: * / + - ==
+    // Things like '*=' and '!=' are supported automatically by implementing '*' and '==', but you can do them if you want more control (e.g. for a bit more perf)
+    //
+    // Operator overloads MUST have at least 1 struct (i.e. you can NOT overload int+int)
+    //
+    // Finally, for the overload to be used, it must be lexically seen (i.e. overloading in another proc won't affect operations here)
+
+    Vec2 :: struct {
+        x, y: float;
+    }
+
+    operator + :: (v1: Vec2, v2: Vec2) -> Vec2 {
+        print("Doing Vec2 + Vec2\n");
+
+        out: Vec2 = ---;    // Don't init for perf
+        out.x = v1.x + v2.x;
+        out.y = v1.y + v2.y;
+
+        return out;
+    }
+
+    {
+        operator - :: (v1: Vec2, v2: Vec2) -> Vec2 {
+            print("Doing Vec2 - Vec2\n");
+
+            out: Vec2 = ---;    // Don't init for perf
+            out.x = v1.x - v2.x;
+            out.y = v1.y - v2.y;
+
+            return out;
+        }
+    }
+
+    v1 := Vec2.{x=10, y=10};
+    v2 := Vec2.{x=5, y=4};
+
+    v3 := v1 + v2;
+    print("v3=%\n", v3);
+
+    // This fails because the code here doesn't 'see' the overload defined in the inner scope above.
+    //
+    // v4 := v1 - v2;
+    // print("v4=%\n", v4);
+
+    // This will call the 'operator +' proc
+    print("v1 before=%\n", v1);
+    v1 += v2;
+    print("v1 after=%\n", v1);
+
+    // We can also explicitly define +=, which is a bit more efficient as we can take the first as a pointer
+    {
+        operator += :: (v1: *Vec2, v2: Vec2) {
+            print("Doing Vec2 += Vec2\n");
+
+            v1.x += v2.x;
+            v1.y += v2.y;
+        }
+
+        v1 = .{x=1, y=1};
+        
+        print("v1 before=%\n", v1);
+        v1 += v2;   // This will call the 'operator +=' proc
+        print("v1 after=%\n", v1);
+    }
+
+    // We can also define operators for differing types (but again, at least 1 MUST be a struct).
+    // By adding '#symmetric', we allow this same function to be used for Vec2*float AND float*Vec2
+    operator * :: (v1: Vec2, scale: float) -> Vec2 #symmetric {
+        out: Vec2 = ---;
+        out.x = v1.x * scale;
+        out.y = v1.y * scale;
+
+        return out;
+    }
+
+    v1 *= 2;
+    print("v1 * 2 = %\n", v1); 
 }
