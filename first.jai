@@ -7,6 +7,7 @@ main :: () {
     generic_test();
     print_test();
     loop_test();
+    ifx_test();
 }
 
 Coord :: struct {
@@ -487,4 +488,55 @@ loop_test :: () {
         // (<<it)[0] = "bro"[0];
     }
     print("heap names after loop=%\n", heap_names);
+}
+
+ifx_test :: () {
+
+    print("\n\n================= ifx Test =================\n\n");
+
+    // 'ifx' is the ternary operator, but more powerful/nicer
+    // The general idea, is its a normal 'if', but where the 'then'/'else' blocks MUST return values of the SAME type.
+    is_heavy := false;
+    x := ifx is_heavy then 100 else 10; // The last statement is automatically 'returned' (you can't actually use return here)
+    x = ifx is_heavy 100 else 10;   // Just like normal if, we can usually omit 'then'
+
+    print("x (type=%)=%\n", type_of(x), x); // This will print x=10
+
+    // When else is omitted, the else automatically returns the default type value
+    x = ifx is_heavy 100;
+    print("x no else=%\n", x); // This will print x=0, 
+
+    // Both sides can be a block
+    is_heavy = true;
+    x = ifx is_heavy {
+        print("is_heavy=true block!\n");
+        100;    // Last statement automatically returned in ifx
+    } else {
+        print("is_heavy=false block!\n");
+        10;
+        // "Hi!"; // This will cause an error because with it the two blocks of ifx will return different types, which is not allowed.
+    }
+    print("x after block=%\n", x);
+
+    print_num :: (x: int) {
+        print("got num=%\n", x);
+    }
+
+    // If the 'then' block is omitted, the ifx condition variable is returned as 'then'.
+    //
+    // Here, x=99 is truthy, so 'then' is used, but since no then is given, 'x' is used, and so 99 is printed.
+    x = 99;
+    print_num(ifx x else -1);
+ 
+    // Since we can also omit else, this will print 'x' if truthy and default value (here its zero) if false 
+    x = 0;
+    print_num(ifx x);
+
+    // In such expressions and in procedure calls, the first variable is returned (here its 'x')
+    x = 3;
+    y := 5;
+    print_num(ifx x < y);
+
+    // In checks with unary operators, the pure variable is returned if true. Here its 'x'
+    print_num(ifx !(x > y));
 }
