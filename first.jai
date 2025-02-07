@@ -9,6 +9,8 @@ main :: () {
     loop_test();
     ifx_test();
     if_case_test();
+    any_test();
+    imports_test();
 }
 
 Coord :: struct {
@@ -635,4 +637,74 @@ if_case_test :: () {
         // This doesn't work because the signature is different
         // case print_num; print("It's the number printer\n");
     }
+}
+
+any_test :: () {
+
+    // Any is the 'any' type you might find in Go etc, and here its this simple struct:
+    //
+    //    Any :: struct {
+    //        type : *Type_Info;
+    //        value_pointer : *void;
+    //    }
+    //
+    // Note that 'Any' simply takes a pointer to the value its given, wherever that variable might be living.
+    // As such, you also need to be careful so that your Any variable does NOT outlive the value it points, or you will find yourself looking at garbage.
+
+    num := 9;
+    x: Any = num;
+
+    print("num=%; num address=%;\nx value=%; x.value_pointer=%\n", num, *num, <<cast(*int)x.value_pointer, x.value_pointer);
+
+    // An example of INVALID use is this:
+    //
+    // num := 9; x: Any = num; return x;
+    //
+    // This is because 'num' is allocated on the stack, and by returning Any, you are returning a pointer that now points to invalid memory!
+    // Obviously this danger applies to any other pointer usage.
+    //
+    // The correct way is to allocate the value of Any on some longer lived memory, like below
+    num_size := size_of(type_of(num));
+    long_any_mem := temporary_alloc(num_size);
+    memcpy(long_any_mem, *num, num_size);
+
+    long_any : Any;
+    long_any.type = type_info(type_of(num));
+    long_any.value_pointer = long_any_mem;
+
+    print("\nlong_any.value_pointer=%\n", long_any.value_pointer);
+
+    // Since we copied into the heap (or temp storage in this case), Any no longer points to the stack num, and changing one doesn't affect the other
+    <<cast(*int)long_any.value_pointer += 1;
+    print("long_any after change=%; num=%\n", <<cast(*int)long_any.value_pointer, num);
+
+    // Usually, assigning something to Any takes its type (e.g. 'long_any=num' makes long_any.type==int), but Any=Any is a special case.
+    // Assigning Any to another Any variable does a simple struct copy, which means the original type info and pointer are maintained!
+    //
+    // This is very nice because it means we avoid having an 'Any' variable with its .type==Any, causing an Any that points to another Any.
+    // In the below example, any2 and long_any are identical! They both have type==int and point to the temp memory we allocated above.
+    any2 : Any = long_any;
+    print("any2=%; long_any=%\n", any2.value_pointer, long_any.value_pointer);
+}
+
+imports_test :: () {
+
+    print("\n\n================= Imports Test =================\n\n");
+
+    // Importing a module (Jai name for library) dumps its names into our namespace.
+    // This can be useful for very common stuff, like how we can do 'print' instead of 'Basic.print'.
+    //
+    // Another way to import is by giving a name to an import, like below
+    My_Basic :: #import "Basic";
+    My_Basic.print("Same print as usualy\n"); 
+
+    // If you want to name an import AND dump all its names into your namespace, you can use 'using'
+    using My_Basic2 :: #import "Basic";
+
+    // You can also do it in two lines:
+    // My_Basic2 :: #import "Basic";
+    // using My_Basic2;
+
+    My_Basic2.print("My_Basic2.print\n");
+    print("in-namespace print from My_Basic2\n");
 }
