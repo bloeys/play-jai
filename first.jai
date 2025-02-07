@@ -835,4 +835,27 @@ operator_overloading_test :: () {
 
     v1 *= 2;
     print("v1 * 2 = %\n", v1); 
+    
+    // Array subscripting can also be overloaded, which is handy for data structures. The following is supported: [] []= *[]
+    // When reading like arr[0], [] is checked first, and if not available then *[].
+    // When writing like arr[0]=10, []= is checked first, and if not available then *[].
+    //
+    // *[] is the recommended way, as it gives you both read/write in one proc instead of two (its also used for *arr[0]).
+    // But the others are there because its not always possible to give the address of the thing being subscripted (e.g. Bit Array).
+    Bucket :: struct {
+        item_count: s64;
+        items: [100]s64;
+    }
+
+    // The first arg must be a struct, the second an integer index, and the return can be anything
+    operator *[] :: (b: *Bucket, index: int) -> *int {
+        print("'*[]' operator used with index=%\n", index);
+        return *b.items[index];
+    }
+
+    b := Bucket.{};
+    
+    b[10] = 99;
+    b[0]  = 10;
+    print("b[10]=% at address=%\n", b[10], *b[10]);
 }
