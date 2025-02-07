@@ -11,6 +11,7 @@ main :: () {
     if_case_test();
     any_test();
     imports_test();
+    this_and_loc_test();
 }
 
 Coord :: struct {
@@ -707,4 +708,38 @@ imports_test :: () {
 
     My_Basic2.print("My_Basic2.print\n");
     print("in-namespace print from My_Basic2\n");
+}
+
+this_and_loc_test :: () {
+
+    print("\n\n================= #this and #location Test =================\n\n");
+
+    // #this refers to the current procedure, struct, or 'data scope' (not sure what this last one means) at compile time.
+    proc :: #this;
+    print("proc=%\n", proc);
+    
+    // If you refer to a proc, you can also call it, meaning it can be used to make recursive anon procs!
+    //
+    // For example, here this factorial function does NOT have a name, but it can call itself because
+    // #this resolves at compile time to the anonymous proc its in. 
+    facotrial_num := 3;
+    result := (x: int) -> int {
+
+        if x <= 1 return 1;
+        
+        return x * #this(x-1);
+    }(facotrial_num);
+
+    print("factorial(%)=%\n", facotrial_num, result);
+
+    // This can also be used to simplify definitions of self-referencing structs
+    Node :: struct (data_type: Type)  {
+        data: data_type;
+        next: *#this; // Equivalent to 'next: *Node(data_type)'
+    }
+
+    print("node=%\n", Node(int).{});
+
+    // There is also #location(x), which gives you the source location of 'x'. The returned value is the struct 'Source_Code_Location'
+    print("% loc=%\n", #this, #location(#this)); 
 }
