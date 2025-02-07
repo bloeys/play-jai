@@ -8,6 +8,7 @@ main :: () {
     print_test();
     loop_test();
     ifx_test();
+    if_case_test();
 }
 
 Coord :: struct {
@@ -539,4 +540,99 @@ ifx_test :: () {
 
     // In checks with unary operators, the pure variable is returned if true. Here its 'x'
     print_num(ifx !(x > y));
+}
+
+if_case_test :: () {
+
+    print("\n\n================= if+case Test =================\n\n");
+
+    PROG_LANGS :: enum u8 {
+        C :: 1;
+        CPP;
+        C_SHARP;
+        GO;
+        JAI;
+        JAVA;
+    }
+
+    // This is just a normal switch statement as you might expect.
+    // Each case is an entire block with its own scope.
+    //
+    // Each case has an automatic 'break' unless you use #through. Similar to how Go behaves.
+    lang := PROG_LANGS.JAI;
+    if #complete lang == {  // '#complete' forces you to handle all enum values
+
+        case .JAI;
+            print("% is an amazing lang\n", lang);
+
+        case .C; #through;   // Falls through to next
+        case .C_SHARP; #through;
+        case .GO; print("% is a decent lang\n", lang);
+
+        case .CPP; #through;
+        case .JAVA; print("% is...oh God why\n", lang);
+
+        // Default case.
+        case;
+            print("I don't know anything about the lang %\n", lang);
+    }
+
+    // There is an important note in the if_case how_to, which is that its useful to have
+    // the default case EVEN IF you have #complete, and the reason is that an invalid
+    // value can come from a software/hardware bug (e.g. user input)
+    lang_ptr := *lang;
+    <<lang_ptr = 255;
+    if #complete lang == {
+
+        case .JAI; #through;
+        case .C; #through;
+        case .C_SHARP; #through;
+        case .GO; #through;
+        case .CPP; #through;
+        case .JAVA; print("% is a KNOWN language\n", lang);
+
+        // Default case.
+        case;
+            print("I do NOT know anything about the lang %\n", lang);
+    }
+    
+    // Case conditions MUST be constant. Variables, procedure calls, and range checks (like below) are NOT allowed
+    x := 5;
+    if x == {
+        // case x > 3; print("x is BIGGER than 3!\n");
+    }
+
+    // Anything that is constant AND comparable with '==' can be used in case
+    prog_lang_name := PROG_LANGS.JAI;
+    if prog_lang_name == {
+        case 5; print("It's Jai!\n");
+        case; print("It's not Jai :(\n");
+    }
+
+    name := "Omar";
+    if name == {
+        case "Omar"; print("Wait, I know him...\n");
+        case; print("Who?\n");
+    }
+
+    // We can do type switches!
+    my_type := int;
+    if my_type == {
+        case int; print("As prophesized, its an int!\n");
+        case float; print("I didn't expect a float!\n");
+    }
+
+    // We can also switch on procedures (of the same signature)
+    print_num :: (x: int) {
+        print("%\n", x);
+    }
+
+    my_proc := ifx_test;
+    if my_proc == {
+        case ifx_test; print("It's the ifx_test procedure (type=%)\n", type_of(my_proc));
+        case main; print("It's the big boss, main\n");
+
+        // This doesn't work because the signature is different
+        // case print_num; print("It's the number printer\n");
+    }
 }
