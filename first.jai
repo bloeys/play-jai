@@ -15,7 +15,7 @@ main :: () {
     this_and_loc_and_run_test();
     operator_overloading_test();
     static_if();
-    polymorphic_test();
+    polymorphic_procs_test();
 }
 
 Coord :: struct {
@@ -939,9 +939,9 @@ static_if :: () {
     print("msg=%\n", gamer_msg);
 }
 
-polymorphic_test :: () {
+polymorphic_procs_test :: () {
 
-    print("\n\n================= Polymorphic Test =================\n\n");
+    print("\n\n================= Polymorphic Procs Test =================\n\n");
 
     // Polymorphic/generics/templates, whatever you want to call it. Seems Jai uses polymorphic.
     //
@@ -980,7 +980,7 @@ polymorphic_test :: () {
     print("my_sum=%\n", my_sum);
 
     // type_of and type_info can only be used on polymorphic types at compile time (e.g. inside: #run, #modify, etc.)
-    #run print("\n(inside proc=%) compile-time type_of of polymorphic proc 'sum'=%\n\n", #procedure_name(polymorphic_test), type_of(sum));
+    #run print("\n(inside proc=%) compile-time type_of of polymorphic proc 'sum'=%\n\n", #procedure_name(polymorphic_procs_test), type_of(sum));
 
     // The same statement above without #run will cause an error:
     // print("\n(inside proc=%) compile-time type_of of polymorphic proc 'sum'=%\n\n", #procedure_name(polymorphic_test), type_of(sum));
