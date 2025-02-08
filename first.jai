@@ -257,10 +257,10 @@ print_test :: () {
     print("\n\n================= Print Test =================\n\n");
 
     print("generic_test=%\n", generic_test);  // Outputs 'procedure 0x123', where 0x123 is the address
-    print("generic_test=%\n", cast(*void)generic_test); // The cast outputs only the address without 'procdure'
+    print("generic_test=%\n", cast(*void)generic_test); // The cast outputs only the address without 'procedure'
 
     // We can mix and match numbered and non-numbered print arguments.
-    // Non-numbered after numbered will pick the next arugment after that number. So here % is used after %1, so %==%2.
+    // Non-numbered after numbered will pick the next argument after that number. So here % is used after %1, so %==%2.
     print("%3. Please welcome %1. %1 has been working on this language for % years. Good job %1. Thank you for % years of work.\n", "Jon", 10, "Hi all");
 
     // Formatting options can be applied using formatting structs like FormatInt/FormatStruct/FormatFloat/FormatArray
@@ -701,7 +701,7 @@ imports_test :: () {
     //
     // Another way to import is by giving a name to an import, like below
     My_Basic :: #import "Basic";
-    My_Basic.print("Same print as usualy\n"); 
+    My_Basic.print("Same print as usually\n"); 
 
     // If you want to name an import AND dump all its names into your namespace, you can use 'using'
     using My_Basic2 :: #import "Basic";
@@ -726,13 +726,13 @@ this_and_loc_and_run_test :: () {
     //
     // For example, here this factorial function does NOT have a name, but it can call itself because
     // #this resolves at compile time to the anonymous proc its in. 
-    facotrial_num := 3;
+    factorial_num := 3;
     factorial_result := (x: int) -> int {
         if x <= 1 return 1;
         return x * #this(x-1);
-    }(facotrial_num);
+    }(factorial_num);
 
-    print("factorial(%)=%\n", facotrial_num, factorial_result);
+    print("factorial(%)=%\n", factorial_num, factorial_result);
 
     // This can also be used to simplify definitions of self-referencing structs
     Node :: struct (data_type: Type)  {
@@ -961,7 +961,7 @@ polymorphic_procs_test :: () {
     // If we had (x: T, y: $T) and called as (10, 'hi'), you will get the error 'Wanted string, got s64'.
     //
     // Understanding this behavior is useful in helping the compiler give you better errors. 
-    // By deciding which argumen is 'most important', like in array_add(arr: *[..]$T, item: T) the array is what's important, allows
+    // By deciding which argument is 'most important', like in array_add(arr: *[..]$T, item: T) the array is what's important, allows
     // you to get an error telling you that you are trying to add an item of the wrong type to your array, instead of telling you the array type is wrong!
     //
     // Its also super cool to note that each polymorphic proc is compiled into a native function equivalent
