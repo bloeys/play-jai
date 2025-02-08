@@ -1012,9 +1012,51 @@ polymorphic_procs_test :: () {
     apply_int_binary_proc(sum, 1, 2);
 
     // Usually, we use polymorphic procs like 'x: $T', but in some cases its useful to have the VALUE be constant/known at compile time
-    // which we can guarantee by doing something like '$x: int'.
+    // which we can guarantee by doing something like '$x: int'. This is known as 'auto baking' (because the value gets baked into the proc).
     //
-    // This can be useful to carry out some optimizations when the value of 'x' is some specific value(s), but be careful because each
+    // This can be useful to, say, do some optimizations when the value of 'x' is within some range, but be careful because each
     // unique value will cause this proc to generate a new polymorphed version, potentially bloating compile time!
-    
+    is_even :: ($x: int) -> bool {
+
+        #run print("is_even compiled with $x=%\n", x);
+
+        #if x & 1 {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    // is_even will get compiled into 3 versions, one for each of these values, and where the body
+    // is the one appropriate based on the #if compile time check
+    print("is_even(1)=%\n", is_even(1));
+    print("is_even(3)=%\n", is_even(3));
+    print("is_even(6)=%\n", is_even(6));
+
+    // However, by now you probably noticed that while this is cool, a major problem with it
+    // is that it makes the proc only usable by callers who can supply a constant value!
+    //
+    // temp := 9; is_even(temp); // This causes an error because temp is not a constant
+    //
+    // Luckily, we can make it optional to supply a constant (man this is such a well designed language!)
+
+    is_even2 :: ($$x: int) -> bool {
+
+        #if is_constant(x) {
+
+            #if x & 1 {
+                return false;
+            } else {
+                return true;
+            }
+
+        } else {
+            return !(x & 1);
+        }
+    }
+
+    // In this case, we get 1 polymorph that handles ALL non-const values, and N polymorphs for const values, one per unique const value.
+    num := 6;
+    print("(const) is_even2(3)=%\n", 3);
+    print("(non-const) is_even2(6)=%\n", num);
 }
