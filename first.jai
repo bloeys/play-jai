@@ -17,6 +17,7 @@ main :: () {
     static_if();
     polymorphic_procs_test();
     polymorphic_structs_test();
+    limit_polymorphic_types_test();
 }
 
 Coord :: struct {
@@ -1163,4 +1164,64 @@ polymorphic_structs_test :: () {
     }
     
     // foo(float); // This will cause an error
+}
+
+limit_polymorphic_types_test :: () {
+
+    print("\n\n================= Limit Polymorphic Types Test =================\n\n");
+
+    vec2 :: struct {
+        x, y : float;
+    }
+
+    vec3 :: struct {
+        #as using v2: vec2;
+        z: float;
+    }
+
+    // One way of limiting which types are allowed in a polymorphic proc/struct is by using the $T/R syntax,
+    // which limits $T to only be R or one of its derived types.
+    //
+    // Remember this is polymorphic, so the type of 'v' is whatever got passed (i.e. could be vec2 or vec3)
+    vec2_printer :: (v: $T/vec2) {
+        print("vec2_printer(type=%)=%\n", type_of(v), v);
+    }
+
+    v2 := vec2.{x=5, y=6};
+    v3 := vec3.{x=9, y=10, z=11};
+    vec2_printer(v2);
+    vec2_printer(v3);
+    // vec2_printer("Hi"); // This will cause an error because vec2_printer limits its polymorphs to vec2 or stuff derived from it 
+
+    // Another way is to use some compile time checks to ensure the type is as you expect, like by using #assert.
+    // There is probably a way to say 'does this type implicitly cast to this other type' to do this assert in a nicer way, but no idea how.
+    vec2_printer_v2 :: (v: $T) {
+        #assert type_of(v)==vec2 || type_of(v) == vec3 "vec2_printer_v2 only accepts vec2 and vec3";
+        // #assert T==vec2 || T == vec3; // This is equivalent to the previous line
+
+        print("vec2_printer_v2(type=%)=%\n", type_of(v), v);
+    }
+
+    vec2_printer_v2(v2);
+    vec2_printer_v2(v3);
+    // vec2_printer_v2("Hi"); // This fails
+
+    // Now we come to the crazy part I didn't expect Jai to have,
+    // which is matching types by their 'interface', meaning by whether they contain a given set of vars/types!
+    Named :: struct {
+        name: string;
+    }
+
+    print_named :: (x: $T/interface Named) {
+        print("named(type=%).name=%\n", T, x);
+    }
+
+    Player :: struct {
+        health := 100;
+        level := 0;
+        name: string;   // This makes it match 'interface Named', even though the position and offset are different!
+    }
+
+    print_named(Player.{name="Skele"});
+    // print_named(v2); // This fails because vec2 doesn't contain a 'name: string' field
 }
