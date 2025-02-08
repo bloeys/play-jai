@@ -18,6 +18,7 @@ main :: () {
     polymorphic_procs_test();
     polymorphic_structs_test();
     limit_polymorphic_types_test();
+    modify_directive_test();
 }
 
 Coord :: struct {
@@ -1224,4 +1225,173 @@ limit_polymorphic_types_test :: () {
 
     print_named(Player.{name="Skele"});
     // print_named(v2); // This fails because vec2 doesn't contain a 'name: string' field
+}
+
+// No reset tells the compiler to keep any changes that happened to the value of this variable during compilation.
+//
+// For example, if #run does x=99, normally this change isn't seen by runtime code, but no_reset allows the change to be seen.
+#no_reset modify_directive_test_add_compile_counter := 0;
+#no_reset modify_directive_test_add_v2_compile_counter := 0;
+
+modify_directive_test :: () {
+
+    print("\n\n================= Modify Directive Test =================\n\n");
+
+    // #modify is a directive that allows you to write a special code block between the header and body
+    // of a polymorphic proc/struct. Within this block you are allowed to change the value of polymorphic variables and then
+    // finally to return a bool, true on success, and false to indicate to the compiler that this polymorph must be rejected (i.e. compiler error).
+    //
+    // After modify does any adjustments, the polymorph continues normally, as if the user used those params (assuming #modify changed them).
+    Int_Holder :: struct (N: int)
+    #modify {
+        // Force N to 10 if user selected less
+        if N < 10 N = 10;
+        return true;
+    }
+    {
+        arr: [N]int;
+    }
+
+    ih: Int_Holder(5);
+    print("int_holder.arr.count=%\n", ih.arr.count); // This prints 10 even though we passed 5!
+
+    // Modify also allows something that is otherwise NOT allowed, which is polymorphic return variables.
+    //
+    // In this example, the return is equal to the array element type, but if we notices the element is too small,
+    // we make the return type bigger than the element, making it 4 bytes.   
+    sum :: (arr: []$T) -> $R
+    #modify {
+        
+        R = T;  // Default to being the same as array elements
+
+        ti := cast(*Type_Info) R;
+        if ti.type == .INTEGER {
+
+            int_info := cast(*Type_Info_Integer)ti;
+            if int_info.runtime_size < 4 {
+                R = ifx int_info.signed s32 else u32;
+            }
+        }
+
+        return true;
+    }
+    {
+        result: T;
+        for arr result += it;
+        return result;
+    }
+
+    // Modify changes the return of sum([]u8) to be u32, but leaves s32 and and s64 untouched
+    sum_u8 := sum(u8.[1, 2, 3]);
+    sum_s32 := sum(s32.[1, 2, 3]);
+    sum_s64 := sum(s64.[1, 2, 3]);
+
+    print("sum_u8(type=%)=%\n", type_of(sum_u8), sum_u8);
+    print("sum_s32(type=%)=%\n", type_of(sum_s32), sum_s32);
+    print("sum_s64(type=%)=%\n", type_of(sum_s64), sum_s64);
+
+    // Aside from validations, another use case for #modify is to force types into other types to reduce polymorphs.
+    //
+    // The following proc will compile 1 time per unique type passed, causing many polymorphs.
+    add :: (x: $T, y: T) -> T {
+        #run modify_directive_test_add_compile_counter += 1;
+        return x + y;        
+    }
+
+    // These will cause 6 polymorphs
+    SOME_U8 : u8 : 9;
+    SOME_U16 : u16 : 9;
+    SOME_U32 : u32 : 9;
+    SOME_U64 : u64 : 9;
+    SOME_F32 : float : 9;
+    SOME_F64 : float64 : 9;
+    add(SOME_U8, SOME_U8);
+    add(SOME_U16, SOME_U16);
+    add(SOME_U32, SOME_U32);
+    add(SOME_U64, SOME_U64);
+    add(SOME_F32, SOME_F32);
+    add(SOME_F64, SOME_F64);
+
+    print("modify_directive_test_add_compile_counter=%\n", modify_directive_test_add_compile_counter);
+
+    // Using #modify, we can force different sized numeric types into the biggest size, thereby reducing polymorphs.
+    add_v2 :: (x: $T, y: T) -> T
+    #modify {
+        if T == {
+            case u8; #through;
+            case u16; #through;
+            case u32; #through;
+            case u64; T = u64;
+
+            case s8; #through;
+            case s16; #through;
+            case s32; #through;
+            case s64; T = s64;
+
+            case float; #through;
+            case float64; T = float64;
+
+            case; return false, "Unsupported argument type to add_v2";
+        }
+
+        return true;
+    }
+    {
+        #run modify_directive_test_add_v2_compile_counter += 1;
+        return x + y;        
+    }
+
+    // These will cause only 2 polymorphs!
+    add_v2(SOME_U8, SOME_U8);
+    add_v2(SOME_U16, SOME_U16);
+    add_v2(SOME_U32, SOME_U32);
+    add_v2(SOME_U64, SOME_U64);
+    add_v2(SOME_F32, SOME_F32);
+    add_v2(SOME_F64, SOME_F64);
+
+    print("modify_directive_test_add_v2_compile_counter=%\n", modify_directive_test_add_v2_compile_counter);
+
+    // A similar casting approach can be used for derived structs to reduce polymorphs, which works by detecting
+    // whether the passed struct Y is derived from struct X, and if yes we do T=X, thereby making all derived structs of X share one polymorph.
+    //
+    // Example of this is given in how_to "170_modify.jai".
+
+    // There is also this beautiful example given in how_to "170_modify.jai"
+    // Really shows the elegance, simplicity, and power of Jai. Everything is just normal procedural code! 
+    Bitmap :: struct (Width: s16, Height: s16)
+    #modify { return Width >= Height, "Width of a Bitmap must be >= Height."; }
+    {
+        pixels: [Width*Height] u32;
+    } 
+
+    my_bitmap: Bitmap(Width=128, 64);
+    print("my_bitmap=%\n", my_bitmap);
+    // my_bitmap_2: Bitmap(Width=32, 64); // This causes a compilation error because #modify returns false on it
+
+    // The last to note about #modify, is that they can make identical overloads work!
+    // This works if #modify rejects a given type on one of those identical overloads while accepting it on the other, thus allowing the compiler to decide between the overloads.
+    mul :: (x: $T, y: T) -> T
+    #modify {
+        ti := cast(*Type_Info)T;
+        return ti.type == .INTEGER, "This mul overload only accepts INTEGERS";
+    }
+    {
+        return x * y;
+    }
+
+    mul :: (x: $T, y: T) -> T
+    #modify {
+        ti := cast(*Type_Info)T;
+        return ti.type == .FLOAT, "This mul overload only accepts FLOATS";
+    }
+    {
+        return x * y;
+    }
+
+    // Even though the implementations are actually identical, the #modify sections are different
+    // and so each of the below calls will only match one of those overloads, and so causing no compilation errors!
+    mul_int := mul(1, 2);
+    mul_float := mul(2.2, 2);
+    print("mul_int=%\n", mul_int);
+    print("mul_float=%\n", mul_float);
 }
