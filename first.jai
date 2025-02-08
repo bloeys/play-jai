@@ -998,4 +998,14 @@ polymorphic_procs_test :: () {
 
     vec_sum := sum(Vec2.{x=10, y=5}, Vec2.{x=2, y=2});
     print("vec_sum=%\n", vec_sum);
+
+    // Aside from calling the proc, another situation where a polymorphic function gets polymorphed into a specific
+    // type is if its passed as an argument to another function, where that argument allows the compiler to know the type
+    // of the polymorphic proc
+    apply_int_binary_proc :: (f: (x: int, y: int) -> int, a: int, b: int) {
+        result := f(a, b);
+        print("apply_int_binary_proc(%, %)=%\n", a, b, result);
+    }
+
+    apply_int_binary_proc(sum, 1, 2);
 }
