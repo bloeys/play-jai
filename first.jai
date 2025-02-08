@@ -4,6 +4,7 @@
 #add_context gg : u8 = 128;
 
 main :: () {
+
     generic_test();
     print_test();
     loop_test();
@@ -14,6 +15,7 @@ main :: () {
     this_and_loc_and_run_test();
     operator_overloading_test();
     static_if();
+    polymorphic_test();
 }
 
 Coord :: struct {
@@ -935,4 +937,65 @@ static_if :: () {
     // There is an #ifx version as well, with similar rules to the normal 'ifx'
     gamer_msg := #ifx OS == .WINDOWS then "GAMER" else "Candy Crush";
     print("msg=%\n", gamer_msg);
+}
+
+polymorphic_test :: () {
+
+    print("\n\n================= Polymorphic Test =================\n\n");
+
+    // Polymorphic/generics/templates, whatever you want to call it. Seems Jai uses polymorphic.
+    //
+    // The idea is that, similar to how a variable can be a type (e.g. NUM :: s32; x: NUM;), variables can be
+    // compile time by prefixing with '$', and such types can be used to build polymorphic types and procs.
+
+    // Variable used as type
+    NUM :: s32;
+    x: NUM;
+    print("x=%\n", x);
+
+    // '$SOME_TYPE' defines a compile-time variable, which is used as the type of 'a'.
+    // Once this compile-time variable is defined, we can use it like any type WITHOUT prefixing '$', similar to how ':=' is only used the first time.
+    //
+    // Since '$' is the definition of the type, we are telling the compiler 'this type is the same as what the user passes in this SPECIFIC argument'.
+    // This means that when you have (x: $T, y: T), and pass (10, "hi"), the error is 'Wanted s64, got string'. Why? Because '$' is on the first arg.
+    // If we had (x: T, y: $T) and called as (10, 'hi'), you will get the error 'Wanted string, got s64'.
+    //
+    // Understanding this behavior is useful in helping the compiler give you better errors. 
+    // By deciding which argumen is 'most important', like in array_add(arr: *[..]$T, item: T) the array is what's important, allows
+    // you to get an error telling you that you are trying to add an item of the wrong type to your array, instead of telling you the array type is wrong!
+    //
+    // Its also super cool to note that each polymorphic proc is compiled into a native function equivalent
+    // to writing that function for those exact types (e.g. calling sum(int, int) produces a sum proc with int for types).
+    // So each unique call signature of a polymorphic proc produces 1 copy of that function with unique types.
+    // If a signature is used multiple times, 1 version of the polymorphic type is reused.
+    sum :: (a: $SOME_TYPE, b: SOME_TYPE) -> SOME_TYPE {
+        
+        result: SOME_TYPE;
+        result = a + b;
+
+        return result;
+    }
+
+    my_sum := sum(10, 9);
+    print("my_sum=%\n", my_sum);
+
+    // type_of and type_info can only be used on polymorphic types at compile time (e.g. inside: #run, #modify, etc.)
+    #run print("\n(inside proc=%) compile-time type_of of polymorphic proc 'sum'=%\n\n", #procedure_name(polymorphic_test), type_of(sum));
+
+    // The same statement above without #run will cause an error:
+    // print("\n(inside proc=%) compile-time type_of of polymorphic proc 'sum'=%\n\n", #procedure_name(polymorphic_test), type_of(sum));
+
+    // Polymorphic procs work as long as the body works with the passed types.
+    // Normally, passing Vec2 to 'sum' will be an error as '+' isn't defined on structs,
+    // but with 'operator +' for Vec2 being available here, we can pass it to sum.
+    Vec2 :: struct {
+        x, y: float;
+    }
+
+    operator + :: (v1: Vec2, v2: Vec2) -> Vec2 {
+        return .{x=v1.x + v2.x, y=v1.y + v2.y};
+    }
+
+    vec_sum := sum(Vec2.{x=10, y=5}, Vec2.{x=2, y=2});
+    print("vec_sum=%\n", vec_sum);
 }
