@@ -173,7 +173,7 @@ how are you doing today??
 
     // Printing derived type from base
     print_emp_from_base :: (p: *Person) {
-        print("GG=%\n", <<cast(*Employee)p);
+        print("print_emp_from_base=%\n", (cast(*Employee)p).*);
     }
     print_emp_from_base(*e);
 
@@ -442,9 +442,9 @@ loop_test :: () {
     print("dyn_arr after remove and count++ = %\n", dyn_arr);
 
     tick_counter :: (counter: *int) -> int {
-        <<counter += 1;
+        counter.* += 1;
         print("counter ticked!\n");
-        return <<counter;
+        return counter.*;
     }
 
     // while loop conditions are evaluated each loop
@@ -489,14 +489,14 @@ loop_test :: () {
     heap_names := get_names_heap();
     for * heap_names {
         if it.count > 3 it.count=3;
-        print("heap name=%\n", <<it);
+        print("heap name=%\n", it.*);
 
         // While this array is on the heap, the individual strings within it are literal and so immutable.
         // Below are different equivalent ways of changing the first character of the string, but they all crash
         // because 'it' points to a literal string.
 
-        // <<it.data = <<"bro".data;
-        // (<<it)[0] = "bro"[0];
+        // it.data.* = "bro".data.*;
+        // (it.*)[0] = "bro"[0];
     }
     print("heap names after loop=%\n", heap_names);
 }
@@ -591,7 +591,7 @@ if_case_test :: () {
     // the default case EVEN IF you have #complete, and the reason is that an invalid
     // value can come from a software/hardware bug (e.g. user input)
     lang_ptr := *lang;
-    <<lang_ptr = 255;
+    lang_ptr.* = 255;
     if #complete lang == {
 
         case .JAI; #through;
@@ -662,7 +662,7 @@ any_test :: () {
     num := 9;
     x: Any = num;
 
-    print("num=%; num address=%;\nx value=%; x.value_pointer=%\n", num, *num, <<cast(*int)x.value_pointer, x.value_pointer);
+    print("num=%; num address=%;\nx value=%; x.value_pointer=%\n", num, *num, (cast(*int)x.value_pointer).*, x.value_pointer);
 
     // An example of INVALID use is this:
     //
@@ -683,8 +683,8 @@ any_test :: () {
     print("\nlong_any.value_pointer=%\n", long_any.value_pointer);
 
     // Since we copied into the heap (or temp storage in this case), Any no longer points to the stack num, and changing one doesn't affect the other
-    <<cast(*int)long_any.value_pointer += 1;
-    print("long_any after change=%; num=%\n", <<cast(*int)long_any.value_pointer, num);
+    (cast(*int)long_any.value_pointer).* += 1;
+    print("long_any after change=%; num=%\n", (cast(*int)long_any.value_pointer).*, num);
 
     // Usually, assigning something to Any takes its type (e.g. 'long_any=num' makes long_any.type==int), but Any=Any is a special case.
     // Assigning Any to another Any variable does a simple struct copy, which means the original type info and pointer are maintained!
@@ -1066,5 +1066,101 @@ polymorphic_structs_test :: () {
 
     print("\n\n================= Polymorphic Structs Test =================\n\n");
 
+    // Polymorphic structs have the same behaviors as polymorhpic procedures.
+    //
+    // However, since struct params MUST ALWAYS be compile time constant, their param values are always auto baked (i.e. require '$').
+    // But since the compiler knows them to be constant, writing '$' is optional here (as can bee seen with param 'N').
+    Holder :: struct ($T: Type, N: s64 = 300) { // Equivalent to: struct ($T: Type, $N: s64 = 300)
+        items: [N]T;
+    }
+
+    my_holder: Holder(float);
+    my_holder.items[0] = 99.9;
+    print("my_holder=%\n", my_holder);
+
+    Static_Holder :: struct {
+        items: [my_holder.N]float;
+    }
+
+    // Even though these are the same size and layout, they are still distinct types
+    assert(Static_Holder != Holder(float));
+
+    // Polymorphs of the same struct AND same params are exactly the same. Similar to procs, same params are only polymorphed once.
+    assert(type_of(my_holder) == Holder(float, N=my_holder.N));
+
+    // After the parameters are set, the polymorphic struct becomes just a normal struct
+    // which means we can used polymorphed structs like any other struct, for example as a type to create other variables.
+    another_holder: type_of(my_holder);
+    // another_holder: Holder;  // This is an error because 'Holder' by itself is polymorphic. You need to define or params or give all of them defaults.
+    print("\nanother_holder=%\n", another_holder);
+
+    // We haven't mentioned this so far, but polymorphic params of structs/procs live in a special place called 'constants block', that params AND body have access to.
+    // This means you can read the values of polymorphic params or use them at any time!
+    //
+    // Another cool part is that those constants are part of the type, so they do NOT change the size of the struct.
+    print("\nmy_holder.N=%; my_holder.T=%\n", my_holder.N, my_holder.T);   
+    print("size_of(my_holder)=%\n", size_of(type_of(my_holder))); // 4 bytes, the size of 1 float only, as you might expect.
+
+    // The constants block can be accessed from the 'constant_storage' of Type_Info 
+    ti := type_info(type_of(my_holder));
+    print("\n\nmy_holder's type info=%\n\n", ti.*);
+
+    // Read the value out from constant storage (assuming $N is the second param).
+    //
+    // This is done by first getting the offset into constant storage where the value of N starts,
+    // then creating a [X]u8 array with base at the offset, and count equal to size of N (here its 8, as its s64).
+    // Once we have the correct bytes as a byte array ([]u8), we simply cast its pointer to a s64 pointer.
+    N_SIZE_BYTES :: size_of(type_of(my_holder.N));
+
+    holder_n_offset := ti.specified_parameters[1].offset_into_constant_storage;
+    n_bytes := cast([N_SIZE_BYTES]u8) *ti.constant_storage[holder_n_offset];
+    n_val_ptr := cast(*s64) *n_bytes;
+    print("\n'N' from Constants Block of my_holder's type info=%\n", n_val_ptr.*);
+
+    // If a polymorphic struct is placed as a proc argument, the proc argument will accept any polymorph of that struct.
+    //
+    // The below signature is equivalent to: (h: Holder($T, $N))
+    print_holder :: (h: Holder) {
+        print("holder %=%\n", type_of(h), h);
+    }
+
+    print_holder(Holder(T=float, N=1).{});
+    print_holder(Holder(T=int, N=2).{});
+
+    // You can also force the proc to take a specific polymorph only by specifying the holder params.
+    // This forces T=string, but accepts any N value
+    print_string_holder :: (h: Holder(string, $N)) {
+        print("holder %=%\n", type_of(h), h);
+    }
+
+    print_string_holder(Holder(T=string, N=3).{});
+    // print_string_holder(Holder(T=int, N=3).{}); // This will throw an error because it wants T=string
+
+    // Just like procs, we can have compile time types, and we can even give defaults on both type and value while keeping it polymorphic!
+    vec2 :: struct ($init_val: $T = cast(float)0) { // The '$' on init_val isn't required
+        x, y := init_val;
+    }
+
+    vec2_default := vec2.{};
+    vec2_float := vec2(1.1).{};
+    vec2_string := vec2("Hi").{};
+    print("vec2_default(type=%)=%\n", vec2_default.T, vec2_default);
+    print("vec2_float=%\n", vec2_float);
+    print("vec2_string=%\n", vec2_string);
+
+    // The only limitation on polymorphic types currently (as of beta 0.2.009), is that the compiler
+    // must be able to figure out the types of BOTH polymorphic type variables AND auto bakes of the entire signature in one step.
+    //
+    // The below example from how_to 120_polymorphic_structs.jai shows such a failure case.
+    // Here, '$ReturnType' is an auto baked variable, the value of which relies on Thing, but the final type of Thing relies on T.
+    // To typecheck this, you need to figure out T, then only can you do Thing(T), and assign to ReturnType, but this is more than one step and not allowed.
+    Thing :: struct (T: Type) {
+    }
     
+    foo :: ($T: Type, $ReturnType: Type = Thing(T)) -> ReturnType {
+        a: ReturnType;
+        return a;
+    }
+    
+    // foo(float); // This will cause an error
 }
