@@ -158,7 +158,9 @@ how are you doing today??
     //
     // This is useful for creating variables of unknown type.
     // You can create a variable x based on a variable t type_of(t)=Type, but ONLY if t is known at compile time, which is where '$'
-    // becomes necessary
+    // becomes necessary.
+    //
+    // Obviously the usual way here is to just accept 'x: $T' as the second param.
     print_personal_info2 :: ($p: Person, $t: Type) {
         x: t;   // To do this you MUST use '$t'. Simply 't' will throw an error.
         print("Person=%; x=%\n", p, x);
@@ -1008,4 +1010,11 @@ polymorphic_procs_test :: () {
     }
 
     apply_int_binary_proc(sum, 1, 2);
+
+    // Usually, we use polymorphic procs like 'x: $T', but in some cases its useful to have the VALUE be constant/known at compile time
+    // which we can guarantee by doing something like '$x: int'.
+    //
+    // This can be useful to carry out some optimizations when the value of 'x' is some specific value(s), but be careful because each
+    // unique value will cause this proc to generate a new polymorphed version, potentially bloating compile time!
+    
 }
