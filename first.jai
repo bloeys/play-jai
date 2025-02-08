@@ -16,6 +16,7 @@ main :: () {
     operator_overloading_test();
     static_if();
     polymorphic_procs_test();
+    polymorphic_structs_test();
 }
 
 Coord :: struct {
@@ -1059,4 +1060,11 @@ polymorphic_procs_test :: () {
     num := 6;
     print("(const) is_even2(3)=%\n", 3);
     print("(non-const) is_even2(6)=%\n", num);
+}
+
+polymorphic_structs_test :: () {
+
+    print("\n\n================= Polymorphic Structs Test =================\n\n");
+
+    
 }
