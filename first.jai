@@ -19,6 +19,7 @@ main :: () {
     polymorphic_structs_test();
     limit_polymorphic_types_test();
     modify_directive_test();
+    type_variants_test();
 }
 
 Coord :: struct {
@@ -1394,4 +1395,42 @@ modify_directive_test :: () {
     mul_float := mul(2.2, 2);
     print("mul_int=%\n", mul_int);
     print("mul_float=%\n", mul_float);
+}
+
+type_variants_test :: () {
+        print("\n\n================= Type Variants Test =================\n\n");
+
+        // This is basically type aliases, but with some nice stuff on top.
+        //
+        // Note: It is mentioned that this feature is still not stable.
+
+        // We can set any constant to a type, and use that to create variables
+        MY_INT :: int;  // Equivalent to both MY_INT :: #type int; and MY_INT :: #type,isa int;
+        
+        x: MY_INT = 12;
+        y := 13;
+        print("x+y=%\n", x + y);
+
+        print_int :: (val: int) {
+            print("print_int=%\n", val);
+        }
+
+        print_int(x);   // Implicit cast happening here
+
+        // The type variant casts implicitly, as MY_INT and int are considered the same type
+        y = x;
+        x = y;
+        print("type_of(x)=%; type_of(y)=%; Types are equal=%\n", type_of(x), type_of(y), type_of(x) == type_of(y));
+
+        // However, we can use the #type,distinct to block implicit casts
+        MY_INT_V2 :: #type,distinct int; 
+        x_v2: MY_INT_V2 = 12;
+
+        y = cast(int) x_v2;
+        x_v2 = cast(MY_INT_V2) y;
+
+        // All the below calls will fail. They require explicit casts.
+        // print_int(x_v2);
+        // y = x_v2;
+        // x_v2 = y;
 }
