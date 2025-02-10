@@ -1435,6 +1435,9 @@ imports_test :: () {
     // This can be useful for very common stuff, like how we can do 'print' instead of 'Basic.print'.
     //
     // Another way to import is by giving a name to an import, like this:
+    //
+    // Note: If you import two modules into your space without naming them, and you use things that
+    // have identical signatures in both (e.g. two modules having a proc called 'print(string)'), you will get an error.
     My_Basic :: #import "Basic";
     My_Basic.print("Same print as usually\n"); 
 
@@ -1480,7 +1483,7 @@ imports_test :: () {
     Many_Interns2.list_senior_names();
     // Many_Interns.list_senior_names(); // This is an error because in that import we didn't specify LOAD_SENIORS=true
 
-    // Finally, we can import a string as a module
+    // Finally, we can import a string as a module.
     Fac1 :: #import,string "factorial :: (x: int) -> int { if x <= 1 return 1; return x*factorial(x-1);}";
 
     Fac2 :: #import,string #string DONE
