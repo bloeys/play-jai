@@ -20,6 +20,7 @@ main :: () {
     limit_polymorphic_types_test();
     modify_directive_test();
     type_variants_test();
+    imports_test();
 }
 
 Coord :: struct {
@@ -696,28 +697,6 @@ any_test :: () {
     // In the below example, any2 and long_any are identical! They both have type==int and point to the temp memory we allocated above.
     any2 : Any = long_any;
     print("any2=%; long_any=%\n", any2.value_pointer, long_any.value_pointer);
-}
-
-imports_test :: () {
-
-    print("\n\n================= Imports Test =================\n\n");
-
-    // Importing a module (Jai name for library) dumps its names into our namespace.
-    // This can be useful for very common stuff, like how we can do 'print' instead of 'Basic.print'.
-    //
-    // Another way to import is by giving a name to an import, like below
-    My_Basic :: #import "Basic";
-    My_Basic.print("Same print as usually\n"); 
-
-    // If you want to name an import AND dump all its names into your namespace, you can use 'using'
-    using My_Basic2 :: #import "Basic";
-
-    // You can also do it in two lines:
-    // My_Basic2 :: #import "Basic";
-    // using My_Basic2;
-
-    My_Basic2.print("My_Basic2.print\n");
-    print("in-namespace print from My_Basic2\n");
 }
 
 this_and_loc_and_run_test :: () {
@@ -1433,4 +1412,86 @@ type_variants_test :: () {
         // print_int(x_v2);
         // y = x_v2;
         // x_v2 = y;
+}
+
+imports_test :: () {
+
+    print("\n\n================= Imports Test =================\n\n");
+
+    // When doing something like '#import "Basic";' the compiler searches
+    // the 'import_path', which can be set by the metaprogram. The default import_path is './modules'.
+    //
+    // The compiler searches for either something called Basic.jai in the import path
+    // or for a subfolder in the import path that has the structure 'import_path/Basic/module.jai'.
+    //
+    // Being able to import either individual files or entire folders is super awesome, because it
+    // gives us the convenience of splitting a big module into files, while also retaining the freedom
+    // of importing individual pieces, and of not having to do a folder-per-module like Go does!
+    //
+    // An example of a big folder-module is 'Basic' itself. Basic is in 'modules/Basic/module.jai',
+    // and that Basic folder has many files, one of which is 'Print.jai' which has the 'print' function.
+
+    // Importing a module (Jai name for library) dumps its names into our namespace.
+    // This can be useful for very common stuff, like how we can do 'print' instead of 'Basic.print'.
+    //
+    // Another way to import is by giving a name to an import, like this:
+    My_Basic :: #import "Basic";
+    My_Basic.print("Same print as usually\n"); 
+
+    // If you want to name an import AND dump all its names into your namespace, you can use 'using'
+    using My_Basic2 :: #import "Basic";
+
+    // You can also do it in two lines:
+    // My_Basic2 :: #import "Basic";
+    // using My_Basic2;
+
+    My_Basic2.print("My_Basic2.print\n");
+    print("in-namespace print from My_Basic2\n");
+
+    // This import will search the import path and finally import './modules/the_cake.jai'
+    #import "the_cake";
+    print("The cake is a lie=%\n", the_cake_is_a_lie);
+
+    // We can also import things that are NOT in our import path
+    // by using ',file' and then specifying a relative or absolute path.
+    //
+    // Note: since this is an actual path and not search, we need to include the full file name, including the extension.
+    #import,file "intern.jai";
+    // #import "intern.jai"; // This is an error because intern.jai does NOT exist in import_path
+
+    some_func :: () {
+        print("local some_func called\n");
+    }
+
+    // The local proc is always given precedence over imported ones,
+    // as the search goes inner to outer, and will find this first.
+    some_func();
+
+    x := do_intern_on_int(1); // This is from "intern.jai"
+    print("x after intern stuff=%\n", x);
+
+    // Similar to loading a file from outside the import path, we can do the same for folder-modules
+    using Many_Interns :: #import,dir "many_interns";
+    list_intern_names();
+
+    // Modules can also have parameters
+    Many_Interns2 :: #import,dir "many_interns"(LOAD_SENIORS=true);
+
+    Many_Interns2.list_senior_names();
+    // Many_Interns.list_senior_names(); // This is an error because in that import we didn't specify LOAD_SENIORS=true
+
+    // Finally, we can import a string as a module
+    Fac1 :: #import,string "factorial :: (x: int) -> int { if x <= 1 return 1; return x*factorial(x-1);}";
+
+    Fac2 :: #import,string #string DONE
+    factorial :: (x: int) -> int {
+        if x <= 1 return 1;
+        return x*factorial(x-1);
+    }
+    DONE;
+
+    fac1_result := Fac1.factorial(5);
+    fac2_result := Fac2.factorial(10);
+    print("fac1_result=%\n",fac1_result);
+    print("fac2_result=%\n",fac2_result);
 }
