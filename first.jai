@@ -21,6 +21,7 @@ main :: () {
     modify_directive_test();
     type_variants_test();
     imports_test();
+    using_test();
 }
 
 Coord :: struct {
@@ -1497,4 +1498,92 @@ imports_test :: () {
     fac2_result := Fac2.factorial(10);
     print("fac1_result=%\n",fac1_result);
     print("fac2_result=%\n",fac2_result);
+}
+
+using_test :: () {
+
+    print("\n\n================= using Test =================\n\n");
+
+    Entity :: struct {
+        id: s64;
+        name: string;
+        is_active: bool;
+    }
+
+    // To avoid naming conflict errors, using can have only() and except() modifiers.
+    //
+    // using,except(a,b,c) imports everthing into scope except the fields a/b/c.
+    //
+    // using,only(z) imports ONLY z into scope.
+    Person :: struct {
+        using,except(name) e: Entity;
+        name: string;
+        height: s64;
+    }
+
+    Computer :: struct {
+        using,only(id, is_active) e: Entity;
+        name: string;
+        ram_size: s64;
+    }
+
+    // Internally, except/only take a string literal, so we can
+    // use them with an actual literal or with compile time variables or constants.
+    using,only .["is_active"] e: Entity;
+    print("e.is_active=%\n", is_active);
+    
+    ONLY_COMPUTER :: string.["ram_size"];
+    using,only ONLY_COMPUTER c: Computer;
+    print("c.ram_size=%\n", ram_size);
+
+    // You can also do using on the arg list of procs
+    get_person_using_only :: () -> []string {
+        return .["height"];
+    }
+
+    print_person_height :: (using p: Person) {
+        print("person height=%\n", height);
+    }
+
+    using,only #run get_person_using_only() p := Person.{height=99};
+    print_person_height(p);
+
+    // Using also works when importing, which helps avoid proc/type conflicts.
+    //
+    // 'sprint' here is the same as the one from Basic, so 'using' Basic
+    // will cause an error. We can use modifiers here to help.
+    using,except(sprint) My_Basic :: #import "Basic";
+    Basic_Sprint :: My_Basic.sprint;
+
+    sprint :: (format_string: string, args: .. Any) -> string {
+        print("local sprint called!\n");
+        return My_Basic.sprint(format_string, args);
+    }
+
+    // You will only see 1 print from the local sprint
+    sprint("Hi!");
+    x := Basic_Sprint("Hi!2");
+    defer free(x);
+
+    // Another crazy ability, is for us to define a function
+    // that takes names incoming from using and renaming them!
+    //
+    // If you set a name to empty string, it will NOT be imported! this means
+    // map can act both as a renamer and as a filter.
+    //
+    // Regarding lifetime, strings you return must live at least past the return of the function.
+    // This means that you can use literals or temp storage like we do here.
+    //
+    // Note that it is ILLEGAL to change the names passed to you by the compiler. If you want to change, copy first.
+    rename_using_names :: (names: []string) {
+        for * names {
+            it.* = tprint("gg_%", it.*);
+        }
+    }
+
+    // Without the map, this would give an error, but it works because the names brought into the scope are changed!
+    //
+    // How_to 044 shows a nice case of using map to prefix opengl functions with gl.
+    using,map(rename_using_names) e2 := Entity.{name="Entity #2"};
+    print("e2.name=%\n", gg_name);
 }
