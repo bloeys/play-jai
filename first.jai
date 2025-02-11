@@ -1467,6 +1467,9 @@ imports_test :: () {
     This means that yes, A.jai CAN use print if anyone in its module imported Basic. This also
     means that importers of A.jai or even B.jai can NOT use print, because print is in module scope
     and importers only see export scope!
+
+    Regarding application scope, its simply your 'main' scope and is no different than a module scope.
+    It's only given a different name because no one can import the application scope.
     */
 
     /*
