@@ -1459,7 +1459,7 @@ imports_test :: () {
 
     Now a question might come up, if A.jai does #load on B.jai and they become one module and can see
     each other's exported+module scope names, can they see the names imported by each other?
-    That is, B.jai imports Basic, can A.jai use print?
+    That is, if B.jai imports Basic, can A.jai use print?
 
     To answer this question we simply need to know: in which scope does #import put things?
     Answer: #import puts things in module scope.
@@ -1467,6 +1467,13 @@ imports_test :: () {
     This means that yes, A.jai CAN use print if anyone in its module imported Basic. This also
     means that importers of A.jai or even B.jai can NOT use print, because print is in module scope
     and importers only see export scope!
+
+    Note however, that while #import and #load both put things in module scope, its different. #load
+    in a way 'combines' everything in one scope, giving you a shared module scope where everyone can see everyone else.
+
+    But #import, in a way, puts shortcuts/symlinks of names from the export scope into your module scope. You
+    can see these names but they can't see or use stuff you have since you only have symlinks, not the actual things.
+    #load allows files to see from each other because it brings in the actual things, not just symlinks.
 
     Regarding application scope, its simply your 'main' scope and is no different than a module scope.
     It's only given a different name because no one can import the application scope.
