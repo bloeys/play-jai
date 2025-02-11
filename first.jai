@@ -11,7 +11,6 @@ main :: () {
     ifx_test();
     if_case_test();
     any_test();
-    imports_test();
     this_and_loc_and_run_test();
     operator_overloading_test();
     static_if();
@@ -1419,26 +1418,81 @@ imports_test :: () {
 
     print("\n\n================= Imports Test =================\n\n");
 
-    // When doing something like '#import "Basic";' the compiler searches
-    // the 'import_path', which can be set by the metaprogram. The default import_path is './modules'.
-    //
-    // The compiler searches for either something called Basic.jai in the import path
-    // or for a subfolder in the import path that has the structure 'import_path/Basic/module.jai'.
-    //
-    // Being able to import either individual files or entire folders is super awesome, because it
-    // gives us the convenience of splitting a big module into files, while also retaining the freedom
-    // of importing individual pieces, and of not having to do a folder-per-module like Go does!
-    //
-    // An example of a big folder-module is 'Basic' itself. Basic is in 'modules/Basic/module.jai',
-    // and that Basic folder has many files, one of which is 'Print.jai' which has the 'print' function.
+    /*
+    (based on how_to '151_file_and_global_scopes')
+    Jai operates on 3 main levels of scopes: export, module, and file.
+    There is also the 'preload' scope. The scopes live in this hierarchy:
+    
+                             [----Preload----]
+                            /        |        \
+                           /         |         \
+              [Application]      [Module 1]      [Module 2] 
+             /      |                |    \               \ \_________
+            /       |                |     \               \          \
+    [File 1]    [File 2] ...      [File 1]  [File 2] ...    [File 1]  [File 2] ...
 
-    // Importing a module (Jai name for library) dumps its names into our namespace.
-    // This can be useful for very common stuff, like how we can do 'print' instead of 'Basic.print'.
-    //
-    // Another way to import is by giving a name to an import, like this:
+    When you use an identifier, like a variable or a type name, the compiler first looks in file scope,
+    and if not found it checks application/module (they are basically the same) scope, and if still not found
+    it checks preload scope (which has core stuff like Context, Type_Info, etc.), and if not there you get an
+    undeclared identifier error. The checking only goes bottom->top and does NOT cross boundaries between modules/files, normally.
+
+    By default, anything you write goes into 'export scope'. What is that? that is the scope of things
+    that you CAN access when you do #import (be that an import of a file or a whole module).
+    This scope can be activated by '#scope_export;'.
+
+    If you do '#scope_module;', anything under that goes into module scope.
+    But how do you create a module and add many files to it? that is done via '#load "xyz.jai";'.
+    
+    For example, the usual way, like in Basic, is you have a folder of files and one of them is module.jai,
+    and in module.jai you #load all the other files from the folder, which puts all those files in one module scope.
+    When that happens, those files can see exported scope AND module scope names from each other, similar to a Go package.
+
+    Then, when someone #imports the module (e.g. #import "Basic";), that module.jai is imported in such a way
+    where the importer can see names from the exported scope of that entire module, which is module.jai and everything it did #load on.
+
+    File scope, activated by '#scope_file;', is the simplest, only things in that same file can see file scope names.
+
+    Remember, anything you #import is imported in its own module scope that is different than yours, and its
+    module scope includes the file/directory-module (explained in the next section) you imported AND anything it
+    did #load on. This means that if I #import Print.jai from the Basic folder, I do NOT get the entire Basic module!
+    this is because only Print.jai and stuff it directly does #load on will be imported. This is why module.jai is required!
+
+    Now a question might come up, if A.jai does #load on B.jai and they become one module and can see
+    each other's exported+module scope names, can they see the names imported by each other?
+    That is, B.jai imports Basic, can A.jai use print?
+
+    To answer this question we simply need to know: in which scope does #import put things?
+    Answer: #import puts things in module scope.
+
+    This means that yes, A.jai CAN use print if anyone in its module imported Basic. This also
+    means that importers of A.jai or even B.jai can NOT use print, because print is in module scope
+    and importers only see export scope!
+    */
+
+    /*
+    (based on how_to '040_import_and_load')
+    A note on how #import works.
+
+    When doing something like '#import "Basic";' the compiler searches
+    the 'import_path', which can be set by the metaprogram. The default import_path is './modules'.
+
+    The compiler searches for either something called Basic.jai in the import path
+    or for a subfolder in the import path that has the structure 'import_path/Basic/module.jai'.
+
+    Being able to import either individual files or entire folders is super awesome, because it
+    gives us the convenience of splitting a big module into files, while also retaining the freedom
+    of importing individual pieces, and of not having to do a folder-per-module like Go does!
+
+    An example of a big folder-module is 'Basic' itself. Basic is in 'modules/Basic/module.jai',
+    and that Basic folder has many files, one of which is 'Print.jai' which has the 'print' function.
+    */
+
+    // You can do a 'namespaced' import by giving a name to an import, like the import below.
     //
     // Note: If you import two modules into your space without naming them, and you use things that
     // have identical signatures in both (e.g. two modules having a proc called 'print(string)'), you will get an error.
+    //
+    // Note: Regardless of the scope where you put '#import', it is as if you put it at data scope (other procs will see it).
     My_Basic :: #import "Basic";
     My_Basic.print("Same print as usually\n"); 
 
