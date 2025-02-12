@@ -24,6 +24,7 @@ main :: () {
     comma_comma_test();
     pool_test();
     argument_and_return_handling_test();
+    log_test();
 
     // Clear temp storage
     reset_temporary_storage();
@@ -1825,6 +1826,69 @@ argument_and_return_handling_test :: () {
         return out=10;
     }
     stack_var = f2();
+}
 
+log_test :: () {
 
+    print("\n\n================= Logger Test =================\n\n");
+
+    /*
+    The logger is simply a procedure defined in Preload.jai as:
+        
+        Logger    :: #type (message: string, data: *void, info: Log_Info);
+    
+    You can provide your own of course. The log proc from Basic is simply a nice wrapper
+    on top of the default context.logger, where it does print-style things and then calls the default logger.
+
+    Here, we will define our own logger proc and custom data (which is optional) and use it.
+    */
+
+    Overlord_Logger_Data :: struct {
+        prefix: string;
+    }
+
+    overlord_logger :: (message: string, data: *void, info: Log_Info) {
+
+        // Be careful: print from basic uses log if it encounters errors, so
+        // using it here can cause a recursive situation!
+        //
+        // You can protect against that by say setting a flag on your data.
+        logger_data := cast(*Overlord_Logger_Data) data;
+        write_string(logger_data.prefix);
+        write_string(tprint("(loc=%) ", info.location));
+        write_string(message);
+
+        // As per how_to 350, its a convention for log() to NOT require newlines. If one isn't
+        // provided, it will be inserted automatically.
+        //
+        // Honestly, this makes sense for logs.
+        if message && message[message.count-1] != #char "\n" write_string("\n");
+    }
+
+    // This log, from the Basic module, is basically sprint+context.logger(), with a bit more to pass other info in.
+    log("This is a message from the default logger!. Caller proc=%\n", #procedure_name(#this));
+
+    // We can also trivially use our own logger
+    my_logger_data := Overlord_Logger_Data.{prefix = "OVERLORD: "};
+
+    /*
+    When we set a logger like this, its our 'backend' logger, that is, it is the lowest layer that all
+    log calls should eventually go to.
+
+    On the other hand, a 'frontend' logger is more like Basic.log, it can provide a different interface for your convenience
+    but at the end it will call the backend logger on context.logger.
+
+    To repeat a note we mentioned inside our overlord_logger, how_to 350_logging.jai mentions that it is
+    convention for loggers to ensure that each log has a newline so that logs don't just stick together.
+    */   
+    ctx := context;
+    ctx.logger = overlord_logger;
+    ctx.logger_data = *my_logger_data;
+
+    push_context ctx {
+        log("Are you using my logger now?!\n");
+    }
+
+    // Works as you expect
+    log("We are back to the default logger.");
 }
