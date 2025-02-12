@@ -23,6 +23,7 @@ main :: () {
     using_test();
     comma_comma_test();
     pool_test();
+    argument_and_return_handling_test();
 
     // Clear temp storage
     reset_temporary_storage();
@@ -1761,5 +1762,69 @@ pool_test :: () {
     print("pool has memory blocks before release = %\n", pool.current_memblock || pool.unused_memblocks);
     release(*pool);
     print("pool has memory blocks after release = %\n", pool.current_memblock || pool.unused_memblocks);
+}
+
+argument_and_return_handling_test :: () {
+
+    print("\n\n================= Argument and Return Handling Test =================\n\n");
+
+    /* 
+    (Based on how_to 250)
+    When passing arguments to a procedure, basic types that are <= 8 bytes are always passed by value.
+
+    Anything that is > 8 bytes, and structs of any size, are passed 'Maybe By Reference'. This means that
+    they are probably passed by const reference (i.e. 'const &' in C++), but they also might be passed by value,
+    depending on what the compiler decides is the best for performance in that case, as a copy avoids aliasing issues
+    and so might allow the compiler to do additional optimizations making the copy worth it. Either way,
+    it is NOT valid for the program to treat 'Maybe By Reference' differently regardless of how its actually passed underneath.
+
+    Also, since 'large' parameters are passed as const reference, it is NOT allowed to mutate them, unless they are a pointer.
+    If you want to mutate a large non-pointer, you have to copy first.
+    */
+
+    Some_Type :: struct {
+        name: string;
+    }
+
+    f :: (st: Some_Type) {
+
+        // Make a copy then mutate
+        x := st;
+        x.name = "bloeys";
+
+        // This is an error!
+        // st.name = "Please no";
+    }
+
+    // The name doesn't change as its passed by const reference, only the temp copy is changed.
+    y := Some_Type.{name = "Initial Name"};
+    print("name before proc = %\n", y.name);
+    f(y);
+    print("name after proc = %\n", y.name);
+
+    /*
+    Returns are handled beautifully in Jai. Space is allocated on the stack on the caller side for each return
+    parameter of the proc that is being called, and the addresses of these locations are passed implicitly into the proc,
+    essentially its out params from C/C++/C#, just nicer.
+
+    Another nice thing is that the compiler smartly optimizes this. For example, if a caller-site variable
+    is being assigned to a return value of proc, the compiler will NOT alloc new stack space and then copy, rather
+    it will simply use the address of that variable for the return!
+
+    An important consequence of how returns are handled is that we do NOT need to be worried about returning large things
+    as value, as there is no extra copy as you might get in other languages. Return values without worry!
+
+    In C or similar, if you create a struct in a function and then return it, you will have stack space in the function itself,
+    and then the struct will be copied into the caller's variable, causing an extra copy on return, but no such worries in Jai
+    as the struct you create in the function is written to the caller's return variable directly.
+    */
+
+    // Here, writing to 'out'/returning is the same as writing directly to 'stack_var', there is no extra copy.
+    stack_var := 0;
+    f2 :: () -> (out: int) {
+        return out=10;
+    }
+    stack_var = f2();
+
 
 }
