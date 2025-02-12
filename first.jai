@@ -21,6 +21,10 @@ main :: () {
     type_variants_test();
     imports_test();
     using_test();
+    comma_comma_test();
+
+    // Clear temp storage
+    reset_temporary_storage();
 }
 
 Coord :: struct {
@@ -1650,4 +1654,50 @@ using_test :: () {
     // How_to 044 shows a nice case of using map to prefix opengl functions with gl.
     using,map(rename_using_names) e2 := Entity.{name="Entity #2"};
     print("e2.name=%\n", gg_name);
+}
+
+comma_comma_test :: () {
+    
+    print("\n\n================= ,, Test =================\n\n");
+
+    get_heap_int :: () -> *int {
+        x := New(int);
+        return x;
+    }
+
+    // This is the usuall usage of context and push context, which is to switch
+    // out the allocator and maybe other stuff, push them as a context, then
+    // call some proc that allocates, and finally use the result (and maybe free).
+    ctx := context;
+    ctx.allocator = temp;
+
+    push_context ctx {
+        x := get_heap_int();
+        defer free(x); // This frees at end of push context
+        print("heap int=%\n", x);
+    }
+
+    // However, the above setup is a bit heavy weight, as we often might just want to switch
+    // out some context params, like the allocator, just for one proc call.
+    //
+    // Following in the tradition of making things convenient, Jai gives us the ',,' operator,
+    // which can be put after proc arguments, after which you can put context overrides that are
+    // valid only for the duration of that proc call. Its as if you wrapped the proc call in a push context.
+    x := get_heap_int(,, allocator=temp);
+    defer free(x,, allocator=temp); // Don't forget to free with the correct allocator!
+    // defer free(x); // This will cause a crash because it will free with context.allocator, which is different than temp!
+
+    print("heap int with temp=%\n", x);
+    
+    // Since overriding the allocator is the most common operation, if you don't specify a name
+    // like below, its the same as doing 'allocator=temp'.
+    //
+    // Also, you can override any context param as normal, like setting a new log.
+    overlord_logger :: (message: string, data: *void, info: Log_Info) {
+        print("Overlord Logger: %\n", message);
+    }
+
+    y := get_heap_int(,, temp, logger=overlord_logger);
+    defer free(y,, allocator=temp);
+    print("heap int with temp 2=%\n", y);
 }
