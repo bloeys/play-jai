@@ -22,6 +22,7 @@ main :: () {
     imports_test();
     using_test();
     comma_comma_test();
+    pool_test();
 
     // Clear temp storage
     reset_temporary_storage();
@@ -1700,4 +1701,65 @@ comma_comma_test :: () {
     y := get_heap_int(,, temp, logger=overlord_logger);
     defer free(y,, allocator=temp);
     print("heap int with temp 2=%\n", y);
+}
+
+pool_test :: () {
+
+    print("\n\n================= Pool Test =================\n\n");
+
+    /*
+    Pool is a fast allocator that can be used instead of the generic heap allocator,
+    especially useful for use inside subsystems of your programs or other long lived data structures,
+    which is described as category 3 of memory lifetimes in how_to 200.
+
+    Looking quickly at Pool.jai, it looks like its a nice Arena allocator.
+    Pool uses an underlying allocator (e.g. the default heap allocator) to allocate blocks of memory in
+    certain sizes, and then when you want to allocate it uses memory from a pre-allocated block and increments a pointer,
+    and if there is not enough space it allocates a new block and gives you memory from that. Blocks are linked to each
+    other in a linked list. Block sizes are configurable on the struct.
+
+    Note that allocations above a certain size are *always* allocated separately using the backing/block allocator,
+    and this size is also configurable on the Pool struct.
+
+    This test is simply to show the basic usage of pool, but you can look at Pool.jai for an example
+    and more details.
+    */
+
+    #import "Pool";
+    
+    pool: Pool;
+    // If we don't pass an allocator on the second param, it will use context.allocator as its block allocator.
+    // ALWAYS use this BEFORE you use the pool, otherwise it won't have anywhere to allocate memory from.
+    set_allocators(*pool);
+    pool_allocator := Allocator.{proc = pool_allocator_proc, data=*pool};
+
+    get_heap_int :: () -> *int {
+        return New(int);
+    }
+
+    get_bytes_used_by_pool :: (p: *Pool) -> int {
+        // This only works if we don't allocate more than one block.
+        if !p.current_memblock return 0;
+
+        return p.memblock_size - HEADER_SIZE - p.bytes_left;
+    }
+
+    print("pool bytes used before alloc = %\n", get_bytes_used_by_pool(*pool));
+    
+    x := get_heap_int(,,allocator = pool_allocator);
+    defer free(x,, allocator = pool_allocator); // Free does NOTHING on pool. Its an arena after all!
+
+    print("pool bytes used after alloc = %\n", get_bytes_used_by_pool(*pool));
+
+    // To mark all the pool memory as 'free' WITHOUT returning it to the OS, we can call reset.
+    // This is useful because future allocations will be very fast as we already have the memory, just move a pointer!
+    reset(*pool);
+    print("pool bytes used after reset = %\n", get_bytes_used_by_pool(*pool));
+
+    // To return the memory to the OS use release. Internally, release calls reset and then gives the memory
+    // back the operating system.
+    print("pool has memory blocks before release = %\n", pool.current_memblock || pool.unused_memblocks);
+    release(*pool);
+    print("pool has memory blocks after release = %\n", pool.current_memblock || pool.unused_memblocks);
+
 }
