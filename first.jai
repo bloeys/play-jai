@@ -26,6 +26,7 @@ main :: () {
     argument_and_return_handling_test();
     log_test();
     module_params_test();
+    metaprogramming_test();
 
     // Clear temp storage
     reset_temporary_storage();
@@ -1935,4 +1936,25 @@ module_params_test :: () {
  
     Mi2.list_senior_names();
     print("intern salaries from Mi2 = %\n", Mi2.INTERN_SALARIES);   // Its still active even without passing
+}
+
+metaprogramming_test :: () {
+
+    print("\n\n================= Metaprogramming Test =================\n\n");
+
+    /*
+    The goal of this test is to talk and show a few things, including:
+      - Metaprogramming
+      - Workspaces
+      - Custom compilation command line flags
+      - Compilation messsage loop
+      - The default metaprogram
+
+    Strap in, this is going to be amazing!
+
+    The first note I would like to make, is that ignoring all the fancy/scary names, the whole setup
+    is surprisingly simple! like really simple! great power delivered in beautiful simplicity has been the
+    modus operandi for this language so far, and am pleasantly surprised to this continue even with things I exepcted
+    would require some amount of complexity, but it seems its a skill issue on my end.
+    */
 }
