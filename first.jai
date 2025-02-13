@@ -25,6 +25,7 @@ main :: () {
     pool_test();
     argument_and_return_handling_test();
     log_test();
+    module_params_test();
 
     // Clear temp storage
     reset_temporary_storage();
@@ -1546,7 +1547,7 @@ imports_test :: () {
     print("x after intern stuff=%\n", x);
 
     // Similar to loading a file from outside the import path, we can do the same for folder-modules
-    using Many_Interns :: #import,dir "many_interns";
+    using Many_Interns :: #import,dir "many_interns"();
     list_intern_names();
 
     // Modules can also have parameters
@@ -1891,4 +1892,47 @@ log_test :: () {
 
     // Works as you expect
     log("We are back to the default logger.");
+}
+
+module_params_test :: () {
+
+    print("\n\n================= Module Params Test =================\n\n");
+
+    /*
+    By having #module_paramters in the first module file that's loaded, we can configure the module
+    on an per-import basis and on an entire-program basis.
+
+    #module_paramters takes two sets of params, the first are settable per-import and the second settable
+    only the FIRST time its imported+set in the ENTIRE program, and sets that value for everyone forever.
+
+    For example, the module parameters in many_interns.jai looks like:
+        #module_parameters (LOAD_SENIORS := false) (SHOW_SALARIES := false) {
+        }
+
+    The first list which contains LOAD_SENIORS is the per-import params, and the second containing SHOW_SALARIES
+    is the program level module parameters.
+
+    Use the first when the thing being configured is safe for different parts of the program to have differently,
+    like maybe a flag of EOF_IS_ERROR should be a per-import parameter, but memory allocation behavior probably
+    should live on the program level list.
+    */
+
+    // This is allowed because previously in our program when we imported many_interns we did NOT set the second list.
+    // Since its program level, by setting it here, ALL imports will have it active, even ones appearing BEFORE us,
+    // because if you do NOT set it, the value you get is the value of the first explicit set.
+    //
+    // If no import sets it explicitly, then default values are used.
+    Mi1 :: #import,dir "many_interns"()(SHOW_SALARIES = true);
+
+    print("intern salaries=%\n", Mi1.INTERN_SALARIES);
+
+    // This will cause an error because Mi1 already set the program level param!
+    // Mi2 :: #import,dir "many_interns"()(SHOW_SALARIES = false);
+
+    // This is legal because we are only touching import level params,
+    // but we must NOT put the program list, as it maintains the one from Mi1.
+    Mi2 :: #import,dir "many_interns"(LOAD_SENIORS = true);
+ 
+    Mi2.list_senior_names();
+    print("intern salaries from Mi2 = %\n", Mi2.INTERN_SALARIES);   // Its still active even without passing
 }

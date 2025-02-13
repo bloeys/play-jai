@@ -21,11 +21,13 @@
 
 // Now one might ask, why not just make module.jai automatically load all the files into scope?
 // Well what if you wanted to conditionally load some things!
-//
-// Now am not sure how the following module params directive works exactly, but its based on Basic/module.jai.
-#module_parameters (LOAD_SENIORS := false) () {
+#module_parameters (LOAD_SENIORS := false) (SHOW_SALARIES := false) {
 }
 
 #if LOAD_SENIORS {
     #load "senior_names.jai";
+}
+
+#if SHOW_SALARIES {
+    INTERN_SALARIES :: 0;
 }
