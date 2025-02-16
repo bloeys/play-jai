@@ -1,5 +1,7 @@
 #import "Basic";
 
+#load "Global_Consts.jai";
+
 // Add this gg field to the context
 #add_context gg : u8 = 128;
 
@@ -9,10 +11,8 @@ main :: () {
     print("=========================== Bism Allah ===========================\n");
     print("==================================================================\n\n");
 
-    // This variable is created by the build.jai metaprogram and works, but am
-    // commenting this out because the red line by the 'jails' language server
-    // is too annoying.
-    // print("Is built with build.jai = %\n", IS_BUILT_WITH_BUILD_JAI);
+    // This IS_DEBUG const is a placeholder filled by the build.jai metaprogram
+    print("Is debug (set by build.jai) = %\n", IS_DEBUG);
 
     generic_test();
     print_test();
@@ -71,7 +71,6 @@ generic_test :: () {
     z := 1.2;
     w := 55;
 
-    print("\nBism Allah\n\n");
     print("x=%, y=%, z=%\n", x,y,z);
     print("tx=%, ty=%, tz=%\n", type_of(x),type_of(y),type_of(z));
 

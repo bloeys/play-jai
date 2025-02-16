@@ -67,11 +67,11 @@ build :: () {
     add_build_file("main.jai", ws);
 
     // Start message loop that only reads procedure headers
-    message_loop_handler();
+    message_loop_handler(is_release);
     compiler_end_intercept(ws);
 }
 
-message_loop_handler :: () {
+message_loop_handler :: (is_release: bool) {
 
     generated_code := false;
 
@@ -118,7 +118,7 @@ message_loop_handler :: () {
                 // like for example when using #run
                 if !generated_code && phase.phase == .TYPECHECKED_ALL_WE_CAN {
                     generated_code = true;
-                    add_build_string("IS_BUILT_WITH_BUILD_JAI :: true;", msg.workspace);
+                    add_build_string(tprint("IS_DEBUG :: %;", !is_release), msg.workspace);
                 }
 
             case .COMPLETE; break;
