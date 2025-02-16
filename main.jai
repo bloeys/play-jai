@@ -2081,4 +2081,9 @@ metaprogramming_test :: () {
     //
     // This build.jai simply creates a workspace and builds this main.jai, just as if you did 'jai main.jai',
     // and also implements the '-is_jai_cool' user-level compile time argument.
+
+    // Aside from build.jai, there are a bunch of how_tos that go over examples of using metaprogramming.
+    // Those how tos include (not exhaustive): 450_basic_metaprogram, 460_code_browsing_and_generation,
+    // 470_running_hooks_in_the_target_workspace, 480_custom_checks,
+    // 490_browsing_by_module, 500_use_of_compile_time_execution
 }
