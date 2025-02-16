@@ -5,6 +5,10 @@
 
 main :: () {
 
+    print("\n\n==================================================================\n");
+    print("=========================== Bism Allah ===========================\n");
+    print("==================================================================\n\n");
+
     generic_test();
     print_test();
     loop_test();
@@ -1942,6 +1946,8 @@ metaprogramming_test :: () {
 
     print("\n\n================= Metaprogramming Test =================\n\n");
 
+    print("There isn't code here, just a ton of comments! (and build.jai, our metaprogram!)\n");
+
     /*
     The goal of this test is to talk and show a few things, including:
       - Metaprogramming
@@ -2064,4 +2070,10 @@ metaprogramming_test :: () {
     Jai comes from, because by checking things, after say getting typechecked, you are able to implement custom checks,
     generate code, and so on.
     */
+
+    // With this, we are done with the theory! as you can see, its not really complicated.
+    // To see much of what we discussed in action, check the file 'build.jai', our own small metaprogram!
+    //
+    // This build.jai simply creates a workspace and builds this main.jai, just as if you did 'jai main.jai',
+    // and also implements the '-is_jai_cool' user-level compile time argument.
 }
