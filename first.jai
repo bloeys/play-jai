@@ -1947,7 +1947,7 @@ metaprogramming_test :: () {
       - Metaprogramming
       - Workspaces
       - Custom compilation command line flags
-      - Compilation messsage loop
+      - Compiler message loop
       - The default metaprogram
 
     Strap in, this is going to be amazing!
@@ -1956,5 +1956,112 @@ metaprogramming_test :: () {
     is surprisingly simple! like really simple! great power delivered in beautiful simplicity has been the
     modus operandi for this language so far, and am pleasantly surprised to this continue even with things I exepcted
     would require some amount of complexity, but it seems its a skill issue on my end.
+    */
+
+    /*
+    Metaprogramming
+
+    A metaprogram is simply some function you run at compile time like `#run build();`. You can do anything with a metaprogram,
+    like generate an enum, calculate some value and make it a constant, and so on.
+
+    One of the core use cases though is to use a metaprogram as your build 'tool', to control details of how your main
+    program is built.
+    
+    For example, your build metaprogram might decide on output dir, debug/release, set executable name, set compile-time constants,
+    set executable logo, and it might even do crazier things like inspect all procs being built and do some custom checks on them,
+    or force you to play invaders and get a score of 100 before compiling!
+
+    We will discuss how to do some of the cool metaprogram stuff in a bit, but for now its enough to note its simply a function that
+    runs at compile time (e.g. 'jai build.jai', which builds the actual program 'main.jai'), and/or other things you might want.
+
+    Both metaprograms and compilation happen inside 'workspaces', which are our next topic.
+    */
+
+    /*
+    Workspaces
+
+    Workspaces are *completely* separate environments in which the compiler does all its work
+    like compilation, imports, compile time execution (including the metaprogram!), and so on.
+    
+    Different workspaces are completely independent, they can't see each other's globals or read/write each other in
+    any way. The compiler runs all workspaces in parallel and exits when they have all finished compilation.
+
+    The file you feed the compiler (e.g. 'jai main.jai') is run in the default workspace. From there, a metaprogram
+    can create additional workspaces, add source files or source text to it and once the compiler sees any source file/text
+    it immediately starts compilation of this second workspace (compiler is heavily async, it compiles as soon as it has source
+    not necessairly all the source).
+
+    Since each workspace can gets its own settings and even potentially different files, one run of the compiler can compile
+    different releases of the program (e.g. debug+release on x64 and ARM at once), and/or you can even compile completely
+    different programs all at once!
+
+    Not all workspaces need to produce an executable or dll, you can configure a workspace (e.g. the build.jai workspace) to
+    only run at compile time without any 'physical' or direct output (its 'output' is compiling the actual/target program).
+    */
+
+    /*
+    (based on how_to '495_default_metaprogram.jai')
+    The Default Metaprogram
+
+    When you run the compiler, before it runs your own metaprogram and before compiling your code, it actually
+    runs the 'default metaprogram', which is just module that can be found at 'modules/Default_Metaprogram.jai'.
+
+    This metaprogram does things like set the working directory of the compiler, set the output executable name,
+    handle command line args like '-version' and '-x64' (yes, those aren't part of the compiler, its just a jai metaprogram!),
+    and so on. Its not very big and is nice to read to learn what it does and how.
+
+    It is probably of no surprise at this point to know that you can replace this metaprogram with your own. To do so,
+    you simply do the following:
+
+        jai main.jai --- meta My_Metaprogram
+    
+    The above runs modules/My_Metaprogram as the 'default' metaprogram. This can be useful if for example you want to run
+    checks on your build.jai metaprogram, or whatever else you want to do. If your metaprogram is in some custom folder not
+    in the import path, you can do this:
+        
+        jai main.jai --- import_dir my_folder meta My_Metaprogram
+
+    If you want to make your own metaprogram, you might consider using 'Minimal_Metaprogram.jai', which is a stripped down version
+    of the default metaprogram, as your base for building your default metaprogram.
+
+    It is recommended in how_to 495 to run your program and new default metaprogram *without* '--- meta' first to ensure
+    things are working properly, and then switching to it, just to help debug more easily.
+    */
+
+    /*
+    (based on how_to '420_command_line.jai')
+    User-level Arguments During Compilation
+
+    During compilation, you are able to pass any *custom* command line arguments you like to your metaprogram.
+    This is possible by doing something like:
+
+        jai -x64 main.jai - invincible
+
+    While '-x64' is a normal argument seen by the compiler, anything after '-' is considered user-level and is *ignored*
+    by the compiler, and passed to the metaprogram as-is. User-level compilation arguments can be read in your
+    metaprogram using something like this:
+
+        options := get_build_options();
+        args := options.compile_time_command_line;
+        for args {
+            print("user-level compile time arg: %\n", it);
+            if it == {
+                case "invincible"; enable_invincible_mode = true;
+                case; print("unhandled arg %\n", it); exit(1);
+            }
+        }
+    */
+
+    /*
+    (based on how_to '450_basic_metaprogram.jai')
+    Compiler Message Loop
+
+    As the compiler moves through the different stages of compiling your program, like loading
+    source files/strings, handling imports, entering a new 'compilation phase' (like ready to write executable),
+    finishing typechecking, and so on, it emits 'messages' detailing what happened (e.g. proc called 'print' finished typechecked).
+
+    A metaprogram is able to listen to compilation messages to do some work. This is where a lot of the power of compile time
+    Jai comes from, because by checking things, after say getting typechecked, you are able to implement custom checks,
+    generate code, and so on.
     */
 }
