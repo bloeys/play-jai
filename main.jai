@@ -9,6 +9,11 @@ main :: () {
     print("=========================== Bism Allah ===========================\n");
     print("==================================================================\n\n");
 
+    // This variable is created by the build.jai metaprogram and works, but am
+    // commenting this out because the red line by the 'jails' language server
+    // is too annoying.
+    // print("Is built with build.jai = %\n", IS_BUILT_WITH_BUILD_JAI);
+
     generic_test();
     print_test();
     loop_test();

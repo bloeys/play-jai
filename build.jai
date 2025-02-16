@@ -15,6 +15,10 @@ build :: () {
 
     // Create a new workspace to build main.jai in, with a friendly name
     ws := compiler_create_workspace(name = "Build Workspace");
+    if !ws {
+        compiler_report("Workspace creation failed\n");
+        return;
+    }
 
     // Get the current settings workspace (if we don't supply a workspace, current one is used).
     //
@@ -38,10 +42,10 @@ build :: () {
             case "-release";
                 is_release = true;
             case "-is_jai_cool";
-                print("(from the build.jai metaprogram) Yes, Jai is very cool!\n");
+                print("\n(from the build.jai metaprogram) Yes, Jai is very cool!\n");
             case;
                 compiler_report(
-                    tprint("Command-line argument at index=% with value=% is invalid. Valid options are: '-debug'; '-release';\n", it_index+1, it),
+                    tprint("Command-line argument at index=% with value=% is invalid. Valid options are: '-debug'; '-release'; '-is_jai_cool';\n", it_index+1, it),
                 );
         }
     }
@@ -69,6 +73,8 @@ build :: () {
 
 message_loop_handler :: () {
 
+    generated_code := false;
+
     while true {
         
         // Blocks till we get a message
@@ -77,7 +83,6 @@ message_loop_handler :: () {
         if msg.kind == {
             case .IMPORT;
             case .FILE;
-            case .PHASE;
             case .PERFORMANCE_REPORT;
 
             case .TYPECHECKED;
@@ -100,6 +105,20 @@ message_loop_handler :: () {
                         if ends_with(proc_name, "_test")
                             print("Compiler typechecked top-level procedure: %\n", proc_name);
                     }
+                }
+
+            case .PHASE;
+
+                phase := msg.(*Message_Phase);
+
+                // Note: Adding build strings like this that the rest of the code
+                // relies on, it seems, MUST happen AFTER .TYPECHECKED_ALL_WE_CAN.
+                //
+                // We protect using 'generated_code' because this might be reached multiple times,
+                // like for example when using #run
+                if !generated_code && phase.phase == .TYPECHECKED_ALL_WE_CAN {
+                    generated_code = true;
+                    add_build_string("IS_BUILT_WITH_BUILD_JAI :: true;", msg.workspace);
                 }
 
             case .COMPLETE; break;
