@@ -12,7 +12,9 @@ main :: () {
     print("==================================================================\n\n");
 
     // This IS_DEBUG const is a placeholder filled by the build.jai metaprogram
-    print("Is debug (set by build.jai) = %\n", IS_DEBUG);
+    //
+    // This is commented out because the language server in vscode shows an error, but it actually works. 
+    // print("Is debug (set by build.jai) = %\n", IS_DEBUG);
 
     generic_test();
     print_test();
@@ -36,6 +38,7 @@ main :: () {
     log_test();
     module_params_test();
     metaprogramming_test();
+    is_constant_test();
 
     // Clear temp storage
     reset_temporary_storage();
@@ -2085,4 +2088,48 @@ metaprogramming_test :: () {
     // Those how tos include (not exhaustive): 450_basic_metaprogram, 460_code_browsing_and_generation,
     // 470_running_hooks_in_the_target_workspace, 480_custom_checks,
     // 490_browsing_by_module, 500_use_of_compile_time_execution
+}
+
+is_constant_test :: () {
+
+    print("\n\n================= is_constant Test =================\n\n");
+
+    /*
+    This is a small test to explain is_constant a bit, which we have used before.
+
+    is_constant(x) is simply built-in that takes in an *expression* 'x' and reports, at compile time,
+    whether the expression is a constant or not. Since this runs at compile time, is_constant always returns
+    a constant bool value.
+
+    This constant return value can be assigned to variables, constants, and can be used with things like #if
+    */
+    
+    are_floats_constant := is_constant(1.1);
+    IS_NUM_LITERAL_CONSTANT :: is_constant(99);
+
+    print("are_floats_constant = %\n", are_floats_constant);
+    print("is_num_literal_constant = %\n", IS_NUM_LITERAL_CONSTANT);
+
+    // It is important to note that is_constant simply reports whether the given expression
+    // is a constant or not (which is something known to the compiler regarding all expressions),
+    // is_constant does NOT execute whatever you give it.
+    add :: (x: float, y: float) -> float {
+        print("add called\n"); // This will NOT print!
+        return x + y;
+    }
+
+    IS_PROC_CALL_CONST :: is_constant(add(1, 2)); // This is false, and will NOT print 'add called'!
+    print("is_proc_call_constant = %\n", IS_PROC_CALL_CONST);
+
+    is_run_const := is_constant(#run add(1, 2)); // This is true, and will print 'add called' at compile time
+
+    print("is_run_const = %\n", is_run_const);
+
+    // This ALWAYS returns TRUE.
+    //
+    // This is because the inner is_constant always returns a const/it is a const, and so the outer
+    // is_constant always gets a constant, and so this expression is always true. 
+    #if is_constant(is_constant(add(1, 2))) {
+        print("is_constant(is_constant(x)) is always true no matter what 'x' is!\n");
+    }
 }
