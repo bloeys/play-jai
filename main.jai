@@ -39,6 +39,7 @@ main :: () {
     module_params_test();
     metaprogramming_test();
     is_constant_test();
+    insert_directive_test();
 
     // Clear temp storage
     reset_temporary_storage();
@@ -1237,7 +1238,7 @@ limit_polymorphic_types_test :: () {
 
 modify_directive_test :: () {
 
-    print("\n\n================= Modify Directive Test =================\n\n");
+    print("\n\n================= #modify Test =================\n\n");
 
     // #modify is a directive that allows you to write a special code block between the header and body
     // of a polymorphic proc/struct. Within this block you are allowed to change the value of polymorphic variables and then
@@ -2136,4 +2137,82 @@ is_constant_test :: () {
     #if is_constant(is_constant(add(1, 2))) {
         print("is_constant(is_constant(x)) is always true no matter what 'x' is!\n");
     }
+}
+
+insert_directive_test :: () {
+
+    print("\n\n================= #insert Test =================\n\n");
+
+    // #insert lets you, well, insert code at compile time, which can basically be anything
+    // you want, from new procedures to the value of a variable. The code you insert can come
+    // either from a string, or from a code AST (the same types you receive in a metaprogram message loop).
+    //
+    // Lets first look at some examples of using #insert with strings.
+    x := 0;
+
+    #insert "x = 3;";
+    print("x = %\n", x);    // This will print 3
+
+    x = #insert "5;";   // This semicolon after the 5 is a weird requirement for now
+    print("x = %\n", x);    // This will print 5
+
+    #insert "y := 9;";
+    print("y = %\n", y);
+    
+    // #insert can be used basically anywhere, and that includes structs.
+    //
+    // A cool use case from how_to 600_insert is to dynamically generate struct initializers.
+    set_matrix_diagonal_to_1 :: (name: string, n: int) -> string {
+
+        sb: String_Builder;
+
+        for 0..n-1 print_to_builder(*sb, "%[%] = 1;\n", name, it*n + it);
+
+        return builder_to_string(*sb);
+    }
+
+    // Square matrix struct that defaults to identity (super cool!)
+    Matrix :: struct(N: int) {
+        eles: [N*N]float;
+
+        #insert #run set_matrix_diagonal_to_1("eles", N);
+    }
+
+    m: Matrix(2);
+    print("2x2 matrix = %\n", m);
+
+    // The other way you can use #insert is by feeding it an AST, similar to the AST nodes you get in a message loop.
+    // The #code directive, as I understand it, essentially compiles the code block it gets into an AST and
+    // gives it back to you as something of the type 'Code'. 
+    //
+    // 'Code' can be given directly or returned from a function.
+    #insert #code NAME :: "JAI";
+
+    #insert #run () -> Code {
+       return #code age := 10;
+    }();
+
+    print("NAME = %\n", NAME);
+    print("age = %\n", age);
+
+    // #insert also has a short-form of compile-time running a function.
+    //
+    // Also, note that here the returned #code is a block NOT what is inside the block.
+    // This code is equivalent to doing '{x=-99; y=255;}'.
+    #insert -> Code {
+        return #code {
+            x = -99;
+            y = 255;
+
+            FIRST_DAY :: "MONDAY";
+            print("FIRST_DAY = %\n", FIRST_DAY);
+        };
+    }
+
+    print("x = %\n", x);
+    print("y = %\n", y);
+
+    // This fails because FIRST_DAY is defined inside a block put by #insert, and we can't
+    // access it from this outer scope.
+    // print("FIRST_DAY = %\n", FIRST_DAY);
 }
