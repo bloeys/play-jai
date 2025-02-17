@@ -40,6 +40,7 @@ main :: () {
     metaprogramming_test();
     is_constant_test();
     insert_directive_test();
+    macros_test();
 
     // Clear temp storage
     reset_temporary_storage();
@@ -2225,4 +2226,107 @@ insert_directive_test :: () {
     // use #insert or #expand (i.e. a macro) to make executable code!
     //
     // You can read more about this and see examples in how_to 630_compiler_get_nodes
+}
+
+macros_test :: () {
+
+    print("\n\n================= Macros Test =================\n\n");
+
+    /*
+    Here we will look at macros, which are done via the #expand directive, and some features
+    done through macros, like for_expansion.
+
+    Macros are simply functions that instead of being separate from the scope they are being called in,
+    they actually both have access to that scope AND can inject code into the scope where they are used, which
+    gives them more power than normal functions and also makes them more dangerous (e.g. you might get a variable redeclaration).
+
+    The cool part here is, unlike languages like C/C++, Jai macros are completely type checked and 'safe' like the rest of the language, and
+    they are mostly still coding in the same language and following its own rules, unlike what you might get using say a C macro.
+    */
+
+    // First lets look at for_expansions, which are a way through which you can basically define for-loop iterators for your
+    // custom data structures (e.g. using a for_expansion to create an iterator for a HashMap).
+    //
+    // To show this, we will use the same example struct used in how_to 730_for_expansion, which is similar to a hash map or bit array.
+    // If we want to loop over only filled spots, like iterating items in a hash map, we will have to write custom loop logic every time
+    // instead of doing a simple for holder. So we will write a for_expansion that does that for us and allows us to loop in a simple way.
+    Holder :: struct (N: s64, T: Type) {
+        filled: [N]bool;
+        vals: [N]T;
+    }
+
+    // 'for_expansion' is the default name for writing your own iterator.
+    // #expand means this is a macro, and 'For_Flags' is always there as it comes from Preload.jai.
+    // The flags denote what 'options' are set on the for loop, like whether to return pointers or to loop in reverse,
+    // and body is the actual body of the for loop that is using this macro.
+    //
+    // Backticks '`' mean that this line (or variable? not sure) is exported to the parent context,
+    // meaning by putting backtick on it and it_index, the calling for loop body will be able to use them.
+    //
+    // Obviously, this also brings in the possibility of naming conflicts, so the user of the macro has to be careful.
+    //
+    // Note that this is NOT a full implementation, as we don't handle all flag types. In fact, in some data structures that might not
+    // even be possible so you assert on those cases. Its generally up to the datastructure designer to decide what makes sense and how
+    // it and it_index should be set.
+    for_expansion :: (holder: Holder, body: Code, flags: For_Flags) #expand {
+
+        for ok, i: holder.filled {
+
+            if !ok continue;
+
+            `it := holder.vals[i];
+            `it_index := i;
+
+            #insert body;
+        }
+    }
+
+    holder: Holder(5, int);
+
+    holder.filled[0] = true;
+    holder.vals[0] = 23;
+
+    holder.filled[2] = true;
+    holder.vals[2] = 99;
+
+    // This will only print for indices 0 and 2
+    for holder {
+        print("holder[%] = %\n", it_index, it);
+    }
+
+    // For expansion can be actually named anything, and for each type you can actually have more than one! (man jai is cool!)
+    // The caller of the for loop decides which one is used, and if its not explicit then the default for_expansion is used, if available.
+    more_than_fifty_only :: (holder: Holder, body: Code, flags: For_Flags) #expand {
+
+        for ok, i: holder.filled {
+
+            if !ok continue;
+
+            `it := holder.vals[i];
+            if it < 50 continue;
+
+            `it_index := i;
+
+            #insert body;
+        }
+    }
+
+    // This will use the default for expansion again, but will use custom names for it and it_index, which
+    // the compiler automatically switches out for it/it_index in this case, which allows the for_expansion writer
+    // to only think about doing it/it_index. Very nice.
+    for val, i: holder {
+        print("holder[%] = %\n", i, val);
+    }
+
+    // By doing 'for :some_for_expansion' we can explicitly specify the for expansion to use.
+    //
+    // This here will only print 99.
+    for :more_than_fifty_only holder {
+        print("holder[%] = %\n", it_index, it);
+    }
+
+    // You can also combine an explicit for expansion and your own naming for it and it_index
+    for :more_than_fifty_only val, i: holder {
+        print("holder[%] = %\n", i, val);
+    }
 }
