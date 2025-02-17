@@ -16,7 +16,7 @@ main :: () {
     // This is commented out because the language server in vscode shows an error, but it actually works. 
     // print("Is debug (set by build.jai) = %\n", IS_DEBUG);
 
-    generic_test();
+    core_test();
     print_test();
     loop_test();
     ifx_test();
@@ -67,7 +67,9 @@ Employee :: struct {
     salary: float32;
 }
 
-generic_test :: () {
+core_test :: () {
+
+    print("\n\n================= Core Test =================\n\n");
 
     x : s32 = 55;
     y : s8 = cast(s8) x;
@@ -283,8 +285,8 @@ print_test :: () {
 
     print("\n\n================= Print Test =================\n\n");
 
-    print("generic_test=%\n", generic_test);  // Outputs 'procedure 0x123', where 0x123 is the address
-    print("generic_test=%\n", cast(*void)generic_test); // The cast outputs only the address without 'procedure'
+    print("core_test=%\n", core_test);  // Outputs 'procedure 0x123', where 0x123 is the address
+    print("core_test=%\n", cast(*void)core_test); // The cast outputs only the address without 'procedure'
 
     // We can mix and match numbered and non-numbered print arguments.
     // Non-numbered after numbered will pick the next argument after that number. So here % is used after %1, so %==%2.
@@ -2101,7 +2103,9 @@ is_constant_test :: () {
     whether the expression is a constant or not. Since this runs at compile time, is_constant always returns
     a constant bool value.
 
-    This constant return value can be assigned to variables, constants, and can be used with things like #if
+    This constant return value can be assigned to variables, constants, and can be used with things like #if.
+
+    For more on what things are constant, see how_to 551_things_that_are_constant
     */
     
     are_floats_constant := is_constant(1.1);
