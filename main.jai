@@ -40,7 +40,7 @@ main :: () {
     metaprogramming_test();
     is_constant_test();
     insert_directive_test();
-    macros_test();
+    macros_and_for_expansion_test();
 
     // Clear temp storage
     reset_temporary_storage();
@@ -2228,9 +2228,9 @@ insert_directive_test :: () {
     // You can read more about this and see examples in how_to 630_compiler_get_nodes
 }
 
-macros_test :: () {
+macros_and_for_expansion_test :: () {
 
-    print("\n\n================= Macros Test =================\n\n");
+    print("\n\n================= Macros and for_expansion Test =================\n\n");
 
     /*
     Here we will look at macros, which are done via the #expand directive, and some features
@@ -2242,6 +2242,8 @@ macros_test :: () {
 
     The cool part here is, unlike languages like C/C++, Jai macros are completely type checked and 'safe' like the rest of the language, and
     they are mostly still coding in the same language and following its own rules, unlike what you might get using say a C macro.
+
+    Further reading on macros specifically can be found here: https://github.com/Jai-Community/Jai-Community-Library/wiki/Getting-Started#macros
     */
 
     // First lets look at for_expansions, which are a way through which you can basically define for-loop iterators for your
@@ -2260,7 +2262,7 @@ macros_test :: () {
     // The flags denote what 'options' are set on the for loop, like whether to return pointers or to loop in reverse,
     // and body is the actual body of the for loop that is using this macro.
     //
-    // Backticks '`' mean that this line (or variable? not sure) is exported to the parent context,
+    // Backticks '`' mean that this variable is exported to the parent context,
     // meaning by putting backtick on it and it_index, the calling for loop body will be able to use them.
     //
     // Obviously, this also brings in the possibility of naming conflicts, so the user of the macro has to be careful.
@@ -2291,12 +2293,15 @@ macros_test :: () {
 
     // This will only print for indices 0 and 2
     for holder {
-        print("holder[%] = %\n", it_index, it);
+        print("default for_expansion: holder[%] = %\n", it_index, it);
     }
 
     // For expansion can be actually named anything, and for each type you can actually have more than one! (man jai is cool!)
     // The caller of the for loop decides which one is used, and if its not explicit then the default for_expansion is used, if available.
     more_than_fifty_only :: (holder: Holder, body: Code, flags: For_Flags) #expand {
+
+        // We can also introduce extra variables if we want
+        `more_than_fifty_seen_count := 0;
 
         for ok, i: holder.filled {
 
@@ -2307,6 +2312,10 @@ macros_test :: () {
 
             `it_index := i;
 
+            // We put this BEFORE the #insert body to ensure it runs.
+            // If you put this after the body, and the body does a continue or break, the defer won't be activated in those cases.
+            more_than_fifty_seen_count += 1;
+
             #insert body;
         }
     }
@@ -2315,18 +2324,80 @@ macros_test :: () {
     // the compiler automatically switches out for it/it_index in this case, which allows the for_expansion writer
     // to only think about doing it/it_index. Very nice.
     for val, i: holder {
-        print("holder[%] = %\n", i, val);
+        print("default for_expansion with iterator names: holder[%] = %\n", i, val);
     }
 
     // By doing 'for :some_for_expansion' we can explicitly specify the for expansion to use.
     //
     // This here will only print 99.
     for :more_than_fifty_only holder {
-        print("holder[%] = %\n", it_index, it);
+        print("more_than_fifty_only for_expansion: holder[%] = %; more_than_fifty_seen_count = %\n", it_index, it, more_than_fifty_seen_count);
     }
 
     // You can also combine an explicit for expansion and your own naming for it and it_index
     for :more_than_fifty_only val, i: holder {
-        print("holder[%] = %\n", i, val);
+        print("more_than_fifty_only for_expansion with iterator names: holder[%] = %\n", i, val);
+    }
+
+    // For expansion can even be useful in cases where you just have a single array!
+    //
+    // Here, we will look at the example of iterating over a row-major matrix and giving the user a nice
+    // row/column index to work with and think about. This will also allow us to look at other situations, like
+    // custom it_index types and overriding loop controls like break and continue.
+    //
+    // In the previous examples, you can use break/continue/remove and they will work as expected, however that's not
+    // always the case. For example, if your expansion has a nested loop then a break/continue will only affect the inner loop,
+    // which is not what the user expects, and in fact you might not even support some operation (e.g. remove might be banned on a matrix).
+    //
+    // Lets explore these with our matrix struct.
+
+    Matrix :: struct (row_count: s64, col_count: s64) {
+        ELEMENT_COUNT :: row_count * col_count;
+        vals: [ELEMENT_COUNT]float;
+    }
+
+    Matrix_Coord :: struct {
+        row, col: s64;
+    }
+
+    set_matrix_row_col :: (m: *Matrix, row: int, col: int, val: float) {
+        assert(row >= 0 && row < m.row_count);
+        assert(col >= 0 && col < m.col_count);
+        m.vals[row*m.col_count + col] = val;
+    }
+
+    matrix_for_expansion :: (m: Matrix, body: Code, flags: For_Flags) #expand {
+
+        for row: 0..m.row_count-1 {
+            for col: 0..m.col_count-1 {
+
+                `it := m.vals[row*m.col_count + col];
+
+                // We are using custom type for it_index that is suitable for our iterator!
+                `it_index := Matrix_Coord.{row = row, col = col};
+
+                // We are telling insert to replace any 'break' with 'break col' and
+                // to replace any 'remove' with 'assert(false)'.
+                //
+                // The first one ensures that if the body has a break, it doesn what the user expects and
+                // breaks out of the full loop, otherwise break will simply go to the next column.
+                //
+                // The remove override ensures that the caller can't use remove, which we are not allowing here.
+                #insert(break=break col, remove=#assert(false)) body;
+            }
+        }
+    }
+
+    // Set diagonal to 1,2,3
+    m: Matrix(3, 3);
+    set_matrix_row_col(*m, 0, 0, 1);
+    set_matrix_row_col(*m, 1, 1, 2);
+    set_matrix_row_col(*m, 2, 2, 3);
+
+    for :matrix_for_expansion m {
+        // This works. The last row isn't printed!
+        if it_index.row == 2  break;
+
+        print("matrix(row=%, col=%) = %\n", it_index.row, it_index.col, it);
     }
 }
