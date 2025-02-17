@@ -2215,4 +2215,14 @@ insert_directive_test :: () {
     // This fails because FIRST_DAY is defined inside a block put by #insert, and we can't
     // access it from this outer scope.
     // print("FIRST_DAY = %\n", FIRST_DAY);
+
+    // A note on the 'Code' type
+    //
+    // You can convert back and forth from 'Code'<->AST using 'get_compiler_nodes' and 'get_compiler_code'.
+    //
+    // This means you can get something from #code, use get_compiler_nodes on it to get an AST tree,
+    // modify the tree to your liking, use get_compiler_code on the nodes to 'Code' back, and then
+    // use #insert or #expand (i.e. a macro) to make executable code!
+    //
+    // You can read more about this and see examples in how_to 630_compiler_get_nodes
 }
