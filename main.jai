@@ -2246,7 +2246,8 @@ macros_and_for_expansion_test :: () {
     Further reading on macros specifically can be found here: https://github.com/Jai-Community/Jai-Community-Library/wiki/Getting-Started#macros
     */
 
-    // First lets look at for_expansions, which are a way through which you can basically define for-loop iterators for your
+    // Lets look at macros and for_expansions together, with expansions being our use case to explain macros.
+    // for_expansion are a way to define for-loop iterators for your
     // custom data structures (e.g. using a for_expansion to create an iterator for a HashMap).
     //
     // To show this, we will use the same example struct used in how_to 730_for_expansion, which is similar to a hash map or bit array.
@@ -2262,8 +2263,9 @@ macros_and_for_expansion_test :: () {
     // The flags denote what 'options' are set on the for loop, like whether to return pointers or to loop in reverse,
     // and body is the actual body of the for loop that is using this macro.
     //
-    // Backticks '`' mean that this variable is exported to the parent context,
-    // meaning by putting backtick on it and it_index, the calling for loop body will be able to use them.
+    // Backticks '`' mean that this variable is to be used-from/exported-to the parent scope,
+    // meaning by putting backtick on 'it' and 'it_index', the calling for loop body will be able to use them.
+    //
     //
     // Obviously, this also brings in the possibility of naming conflicts, so the user of the macro has to be careful.
     //
@@ -2295,6 +2297,42 @@ macros_and_for_expansion_test :: () {
     for holder {
         print("default for_expansion: holder[%] = %\n", it_index, it);
     }
+
+    // Before we go deeper into for expansions, lets look a bit more at macros.
+    //
+    // For one, note that macros can return values.
+    max_macro :: (a: int, b: int) -> int #expand {
+        return ifx a > b a else b;
+    }
+
+    print("max_macro(1, 2) = %\n", max_macro(1, 2));
+
+    // Using backtick, as we explained earlier, we can access and change outside variables
+    a := 0;
+    tick_a :: () #expand {
+        a := 99; // This is a local macro variable, not visible to the outside
+
+        `a += 1; // Here we are incrementing the outside 'a' variable!
+    }
+
+    print("a before tick_a() macro = %\n", a);
+    tick_a();
+    print("a after calling tick_a() macro = %\n", a);
+
+    // Backticks can also be put on returns, which means return from the outer scope! 
+    //
+    // Because of the backtick on the return, we don't need '-> int' on the macro signature,
+    // as the return is on the OUTER scope!
+    proc_x :: () -> int {
+
+        proc_x_macro :: () #expand {
+            `return 55;
+        }
+
+        proc_x_macro();
+    }
+
+    print("proc_x = %\n", proc_x()); // This will print 55, even though proc_x never uses return directly
 
     // For expansion can be actually named anything, and for each type you can actually have more than one! (man jai is cool!)
     // The caller of the for loop decides which one is used, and if its not explicit then the default for_expansion is used, if available.
