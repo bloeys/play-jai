@@ -3,7 +3,9 @@
 #load "Global_Consts.jai";
 
 // This file and the repo in general is my learnings and examples I made for myself
-// while going through all the how_to documents distributed with the Jai compiler
+// while going through all the how_to documents distributed with the Jai compiler.
+//
+// This has been done on Jai version: beta 0.2.009, built on 6 February 2025.
 //
 // To see more, a great learning resource you can use is: https://github.com/Jai-Community/Jai-Community-Library/wiki
 
@@ -2566,4 +2568,119 @@ asm_test :: () {
 
     count_copy = count;
     print("count assembly write = %\n", count_copy);
+
+    // Immediate moves act like how you expect, with appropriate errors if you try to
+    // move something too big into a small register.
+    //
+    // Also, anywhere you put an immediate you can use signed and unsigned, as those are opaque
+    // from the perspective of the register.
+    #asm {
+        mov.8 a1:, 255;
+        mov.8 a2:, -128;
+        //; mov.8 a3:, 256; // This is an error because value is too large for 8 bits
+
+        mov.16 b1:, 65535; // This works because we are using 16 bits
+
+        // ;Floats work as well
+        mov.32 f1:, 3.141592;
+        mov.64 f2:, 3.141592653589793238462643383279502884197;
+        //; mov.32 f3:, 3.141592653589793238462643383279502884197; // This will error because its too big for 32 bit float
+    }
+
+    // Registers are allocated to variables and freed based by the register allocator, which tries to be smart
+    // by freeing variables no longer used. However, if you exceed maximum number of alive registers, you will get an
+    // error, as there is no automatic spill-to-stack.
+    //
+    // Here is a section and example code copied from how_to 900 about this:
+    //
+    // "The register allocator has some smarts and takes things like lifetimes into account. This lets you use new names
+    // to convey data flow the same way you would in high level code. As a result, register management is turned into a
+    // working set size problem rather than an annoying book-keeping one. If you ever exceed the maximum number of alive
+    // registers, you will get an error from the compiler. There is no automatic spilling or other magic going on here."
+    #asm {
+        mov a:, 32; // alloc a
+        mov b:, 64; // alloc b, free b
+        add a,  10;
+        mov c:, 16; // alloc c
+        add a,  c;  // free  a, free c
+    }
+
+    // You can also pin variables to registers, and use other kinds of registers aside from gpr, like vector registers.
+    // Each register type has its own pool, shown below (taken from how_to 900):
+    //
+    //      gpr - general purpose register,  pool: 8 in 32-bit mode, 16 in 64-bit mode
+    //      str - stack register,            pool: 8 (mostly legacy, used by fpu and mmx instructions)
+    //      vec - vector register,           pool: 8 in 32-bit mode, 16 in 64-bit mode pre AVX512, 32 in 64-bit mode post AVX512
+    //      omr - op-mask register,          pool: 8, only with AVX512
+    //
+    // More complex examples of the below are available in the how_to.
+    // Load from memory locations are also left to the how_to.
+    #asm {
+        my_v: vec; // my_v is assigned to a vector register
+        my_g: gpr === a; // Pinned to the 'a' register (i.e. 0/al/ax/eax/rax)
+
+        // You can also do everything inline in an instruction
+        mov my_g2: gpr === c, 87;
+    }
+
+    // We can also query the cpu for available features and do assembly based on what we have.
+    // #asm blocks allow us to write assembly of features that we have told it are available to us,
+    // and we can either tell it by setting build-time configuration (detailed in the how_to) or by
+    // specifying the features on the #asm block directly (even if build said they aren't supported).
+
+    #import "Machine_X64";
+
+    // You can also specify multiple features like '#asm AVX, AVX2'.
+    // The feature names you use here come from x86_Feature_Flag in Machine_X64.jai.
+    //
+    // Also, this comment on 'pxor' is from how_to 900 and is currently above my pay grade. Skill issue.
+    cpu_info := get_cpu_info();
+    if check_feature(cpu_info.feature_leaves, x86_Feature_Flag.AVX2) {
+        #asm AVX2 {
+            // Here the pxor gets the 256-bit .y version, since that is the default operand size with AVX. In an AVX512
+            // block, the default operand size would be the 512-bit .z.
+            pxor v1:, v1, v1;
+        }
+    }
+    else {
+        // AVX2 is not available on this processor, we have to run our fallback path...
+    }
+
+    // Registers can't be passed to procs, but you can pass them to macros, and the cool thing here
+    // is that no copies or register 'mov's are done, the compiler knows which registers you are referring to.
+    add_regs :: (a: __reg, b: __reg) #expand {
+        #asm {
+            add a, b;
+        }
+    }
+
+    #asm {
+        mov x, 5;
+        mov y, 10;
+    }
+
+    add_regs(x, y);
+
+    #asm {
+        mov count, x;
+    }
+
+    count_copy = count;
+    print("count after add registers macro = %\n", count_copy);
+
+    // Assembly blocks can also be run at compile time, where they are compiled to native code and run.
+    //
+    // The below access of a/b inside #asm is valid as its simply accessing stack variables that don't
+    // have to be in memory.
+    adder :: (a: int, b: int) -> int {
+        #asm {
+            add a, b;
+        }
+        return a;
+    }
+
+    COMP_X :: #run adder(7, 3);
+    print("COMP_X = %\n", COMP_X);
+
+    // More examples and advanced assembly use cases in the how_to, but I think we covered the core here.
 }
