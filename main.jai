@@ -2,6 +2,11 @@
 
 #load "Global_Consts.jai";
 
+// This file and the repo in general is my learnings and examples I made for myself
+// while going through all the how_to documents distributed with the Jai compiler
+//
+// To see more, a great learning resource you can use is: https://github.com/Jai-Community/Jai-Community-Library/wiki
+
 // Add this gg field to the context
 #add_context gg : u8 = 128;
 
@@ -2440,6 +2445,8 @@ macros_and_for_expansion_test :: () {
                 // breaks out of the full loop, otherwise break will simply go to the next column.
                 //
                 // The remove override ensures that the caller can't use remove, which we are not allowing here.
+                //
+                // Note that you should add similar asserts if you don't support certain flags!
                 #insert(break=break col, remove=#assert(false)) body;
             }
         }
