@@ -52,6 +52,12 @@ main :: () {
 
     // Clear temp storage
     reset_temporary_storage();
+
+    // This file is 'done' as of Feb 2025, having covered all things I considered of high enough
+    // value from the how_tos provided with the compiler up to this point. From here, its best
+    // to work on real projects, and maybe look at provided examples and modules when necessary.
+    print("\n");
+    print("Alhamdulilah \n");
 }
 
 Coord :: struct {
