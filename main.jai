@@ -2334,6 +2334,25 @@ macros_and_for_expansion_test :: () {
 
     print("proc_x = %\n", proc_x()); // This will print 55, even though proc_x never uses return directly
 
+    repeat_x_times_macro :: (code: Code, repeats: int) #expand {
+        for 0..repeats-1 #insert code;
+    }
+
+    // Macros+inserts allow us to do interesting things with code
+    salary := 10;
+    funds := 10_000;
+    print("salary before 3x repeats = %\n", salary);
+    print("funds before 3x repeats = %\n", funds);
+
+    // This is equivalent to pasting the code block 3 times here
+    repeat_x_times_macro(#code {
+        salary *= 10;
+        funds -= 10;
+    }, 3);
+
+    print("salary after 3x repeats = %\n", salary);
+    print("funds after 3x repeats = %\n", funds);
+
     // For expansion can be actually named anything, and for each type you can actually have more than one! (man jai is cool!)
     // The caller of the for loop decides which one is used, and if its not explicit then the default for_expansion is used, if available.
     more_than_fifty_only :: (holder: Holder, body: Code, flags: For_Flags) #expand {
