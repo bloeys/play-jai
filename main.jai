@@ -532,6 +532,43 @@ loop_test :: () {
         // (it.*)[0] = "bro"[0];
     }
     print("heap names after loop=%\n", heap_names);
+
+    // You can also use compile time constants to decide whether to loop in
+    // reverse and/or whether you want to loop using pointers or not.
+    //
+    // The reason this requires compile time constants is because the direction of the loop
+    // is set at compile time.
+    //
+    // This will loop normally, but the next in reverse!
+    DO_REVERSE_1 :: false;
+    for <=DO_REVERSE_1 arr {
+        print("DO_REVERSE_1 arr[%] = %\n", it_index, it);
+    }
+
+    DO_REVERSE_2 :: true;
+    for <=DO_REVERSE_2 arr {
+        print("DO_REVERSE_2 arr[%] = %\n", it_index, it);
+    }
+
+    // We can also do both reverse and pointer in one go
+    for *< arr {
+        it.* += 1;
+        print("mutated reverse arr[%] = %\n", it_index, it.*);
+    }
+
+    // We can also have one or both of them conditionals
+    for * <=DO_REVERSE_1 arr {
+        it.* += 1;
+        print("mutated reverse arr[%] = %\n", it_index, it.*);
+    }
+
+    DO_MUTATE :: false;
+    for *=DO_MUTATE, <=DO_REVERSE_1 arr {
+        print("mutated reverse arr[%] = %\n", it_index, it);
+    }
+
+    // Now one might question the usefulness of this, but it comes
+    // into play when you are doing macros, #insert, baked variables, and such, all of which are discussed later on in this file.
 }
 
 ifx_test :: () {
@@ -2428,7 +2465,15 @@ macros_and_for_expansion_test :: () {
         m.vals[row*m.col_count + col] = val;
     }
 
-    matrix_for_expansion :: (m: Matrix, body: Code, flags: For_Flags) #expand {
+    // The actual for_expansion takes a pointer, but you can use without as well
+    // and the compiler auto dereferences for you, but you can do this to indicate
+    // better to the reader what your intention is (i.e. pointer to indicate you want to change)
+    //
+    // Also, note that since for loops are defined at compile time, the body and flags
+    // arguments are actually compile time constants, so you can do things like
+    // setup your for loops based on the flags, like:
+    //      for *=(flags & .POINTER).(bool), <=(flags & .REVERSE).(bool)
+    matrix_for_expansion :: (m: *Matrix, body: Code, flags: For_Flags) #expand {
 
         for row: 0..m.row_count-1 {
             for col: 0..m.col_count-1 {
