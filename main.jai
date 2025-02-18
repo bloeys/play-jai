@@ -46,6 +46,7 @@ main :: () {
     is_constant_test();
     insert_directive_test();
     macros_and_for_expansion_test();
+    asm_test();    
 
     // Clear temp storage
     reset_temporary_storage();
@@ -2509,4 +2510,60 @@ macros_and_for_expansion_test :: () {
 
         print("matrix(row=%, col=%) = %\n", it_index.row, it_index.col, it);
     }
+}
+
+asm_test :: () {
+
+    // Intrinsics? we only do raw assembly in this household.
+    //
+    // The #asm block allows you to write inline assembly that the compiler won't touch, it will
+    // output as-is.
+    //
+    // Note that #asm does NOT actually create a new scope, it lives in the same scope as the parent
+    // and can refer to stack variables (with some limitations discussed later).
+    //
+    // This test isn't meant to be as comprehensive as other places, so for more please
+    // see how_to 900_inline_assembly
+    count := 99;
+    count_copy := count;
+    print("count before assembly = %\n", count_copy);
+
+    #asm {
+        // Ok so I lied a bit, this is x86-64 assembly, but with a bunch of nice stuff
+        // to make life better and things closer to a higher level language!
+        //
+        // For one, we can define named variables that map to, say, a general purpose register (gpr) like eax
+        // and then use the name, and we let the compiler do register mapping for us. Since its 64-bit assembly,
+        // it will also default to a size of 64, which is selecting rax by default instead of ax or so.
+        x: gpr;
+        mov x, 100; // Size is implicit here, and defaults to 64 bits
+
+        mov.64 y:, 50; // Explicit size and inferred type of y. This is similar to y:=50;
+
+        // We can interact with stack vars!
+        // Here count is placed in a proper register chosen by the compiler.
+        add count, 1; // As we are doing x86-64 bit, this add is implicitly add.64
+    }
+
+    // Why the copy? this is the limitation about asm<->stack interaction.
+    // If you send count to print, it will be send as Any, which means a pointer to count
+    // will be sent to print. This will cause the compiler to enforce storing count in memory,
+    // which bans you from using count as a register as we did above.
+    count_copy = count;
+    print("count after assembly = %\n", count_copy);
+
+    // Will x and y are registers, its possible depending on what happens between assembly
+    // blocks for them to spill to stack and then be brought back to registers later, like
+    // if you called a function and we needed the registers or you needed the registers for some
+    // operations or whatever. In general though, you can expect them to stay in their
+    // respective registers.
+    //
+    // Regardless, its seamless from the perspective of the programmer.
+    #asm {
+        sub x, y; // x -= y; Now x will become 50
+        mov count, x;   // Move into count so we can print
+    }
+
+    count_copy = count;
+    print("count assembly write = %\n", count_copy);
 }
